@@ -182,7 +182,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.4.5` Optional 64th-note quantization of input events
+- [x] `1.4.5` Optional 64th-note quantization of input events
   - **Goal:** `src/netmix/quantizer.h/.cpp`: when enabled (session param + `[Netmix],quantize` CO), snap event ticks to the nearest 64th-note boundary derived from the sync-leader BPM (`EngineSync`, `src/engine/sync/enginesync.h`) and session tick rate; applies symmetrically on both peers before capture-send and before apply, so replay stays consistent. Discrete transport events snap; continuous knob streams pass through unquantized (only their timestamps snap).
   - **Touches:** `src/netmix/quantizer.h`, `src/netmix/quantizer.cpp`, `src/netmix/netmixsessionmanager.cpp`, `CMakeLists.txt`, `src/test/netmixquantizer_test.cpp`
   - **Success:** At 120 BPM / 240 Hz ticks, 64th grid = 7.8125 ticks — snapping matches hand-computed boundaries; disabled path is byte-identical passthrough.
