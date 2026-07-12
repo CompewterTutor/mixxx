@@ -35,3 +35,15 @@
 | Message types | 15 types (0–14): Hello, HelloAck, Ping, Pong, InputFrame, OwnershipClaim, OwnershipGrant, OwnershipDeny, OwnershipRelease, TrackOffer, TrackAccept, TrackChunk, TrackComplete, TrackReady, Bye |
 | encodeMessage | Writes header then payload bytes; returns QByteArray |
 | decodeMessage | Validates magic/version/length, deserializes payload by type, checks atEnd(); returns nullopt on any error |
+
+## 2026-07-12: Phase Merge 1.1 (Task 1.1.5)
+
+| Decision | Value |
+|---|---|
+| Merge commit | `6edf39d3b1` on `feat/rollback-network-mixing` |
+| Strategy | `--no-ff` (branch history preserved) |
+| Source | `release/1.1` (13 commits: tasks 1.1.1–1.1.4) |
+| Pre-merge gate | `ctest -R Netmix`: 33/33 pass |
+| Post-merge gate | `ctest -R Netmix`: 33/33 pass |
+| Trunk tree after merge | Identical to `release/1.1` (diff empty) |
+| Phase 1.2 next | Begin on `task-1.2.1` off `release/1.2` (created from trunk after this merge) |
