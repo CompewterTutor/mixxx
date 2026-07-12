@@ -1529,6 +1529,10 @@ add_library(
   src/netmix/netmixsessionmanager.cpp
   src/netmix/protocol.cpp
   src/netmix/sessionclock.cpp
+  src/netmix/controlallowlist.cpp
+  src/netmix/controlcapture.cpp
+  src/netmix/controlapplier.cpp
+  src/netmix/inputframe.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -2910,6 +2914,10 @@ if(BUILD_TESTING)
     src/test/netmixprotocol_test.cpp
     src/test/netmixsessionclock_test.cpp
     src/test/netmixsessionmanager_test.cpp
+    src/test/netmixallowlist_test.cpp
+    src/test/netmixcapture_test.cpp
+    src/test/netmixapplier_test.cpp
+    src/test/netmixinputframe_test.cpp
     src/test/fileinfo_test.cpp
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp
