@@ -147,3 +147,15 @@
 | Trunk tree after merge | Identical to `release/1.3` (diff empty) |
 | Deferred: ClockSync UDP port-sharing | `ClockSync::start` fails on macOS due to `SO_REUSEPORT` not exposed by Qt. Creation commented out in `NetmixSessionManager::onTcpConnected`. Unresolved — fix in Phase 1.4/1.5. See memory.md 2026-07-12 line 132. |
 | Phase 1.4 next | Begin on `task-1.4.1` off `release/1.4` (created from trunk after this merge) |
+
+## 2026-07-12: InputBuffer Ring Buffer (Task 1.4.1)
+
+| Decision | Value |
+|---|---|
+| Capacity | 256 ticks (const `InputBuffer::kDefaultCapacity`). Resizable via `setCapacity`, which triggers `clear`. |
+| Indexing | `tick % capacity` modular arithmetic. Window `[oldestTick, newestTick]` maintained. Slots outside window evicted on window advance. |
+| Divergence detection | `eventsDiffer()` compares predicted vs confirmed events bidirectionally: same wireId different value, extra wireId in confirmed, missing wireId in predicted — all trigger divergence. Uses `qFuzzyCompare` for double comparison. |
+| Cached divergence | `m_cachedFirstDivergentTick` updated on `insertRemoteConfirmed` when divergence detected. `firstDivergentTick()` returns cached if set, otherwise scans all slots. Reset on `clear()` and `advanceWindow()` when empty. |
+| Tick comparison | Modular arithmetic via `tickLt`/`tickLe`/`tickGt`/`tickGe` using `(qint32)(a - b)` (window << 2^31, safe for capacity 256). |
+| No thread safety | InputBuffer lives in Qt thread (same as Capture/Applier). No locks. Not accessed from audio callback. |
+| Event limit | `kMaxEventsPerTick = 32` (duplicated from `InputFramePacker`). Events truncated to this count on insert. |
