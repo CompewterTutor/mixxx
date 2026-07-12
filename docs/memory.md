@@ -281,3 +281,20 @@
 | File naming | `<sha256>.<ext>` inside cache dir |
 | SHA-256 | `QCryptographicHash::Sha256` |
 | Thread | Qt thread only, no locks |
+
+## 2026-07-12: Live-Sound Gating + Remote Deck Load + Analysis (Task 1.6.4)
+
+| Decision | Value |
+|---|---|
+| Protocol version | Bumped to 5. `NetmixTrackOffer.channelId` added (quint16). Old v4 decoders reject v5 payloads via `atEnd()` check (shorter payload). |
+| Gating mechanism | `[ChannelN], mute` set to 1.0 (muted) until `isDeckReady()` true, restored to 0.0 at ready. Uses existing ControlProxy, no engine-callback changes. |
+| `[ChannelN], netmix_ready` CO | Read-only ControlObject created in ctor, reflects 0.0/1.0 via `forceSet`. Default 0.0. Not persisted. |
+| Mute proxy lifetime | `ControlProxy` instances parented to session manager (`this`), created in ctor, valid for entire manager lifetime. `set(0.0/1.0)` from Qt thread is safe (no audio callback involvement). |
+| Receiver-side track load | Uses `Track::newTemporary(filePath)` → `PlayerManager::slotLoadTrackToPlayer(pTrack, group, play=false)`. Requires PlayerManager* set via `setPlayerManager()` before session start. |
+| Analysis scheduling | `Library::analyzeTracks({AnalyzerScheduledTrack(trackId)})` called after track loaded. Temporary tracks have invalid TrackId — analysis skipped gracefully. |
+| Incoming hash→channelId map | `QHash<QString, quint16> m_incomingChannelMap` populated by intercepting TrackOffer in `onTcpMessageReceived` before TrackTransfer processes it. Consumed by `onTrackReceived` (cache-miss) or same `onTcpMessageReceived` handler (cache-hit). |
+| Signal ordering guarantee | Session manager connects to `TcpSession::messageReceived` BEFORE TrackTransfer (created inside `onTcpConnected`). TrackOffer is processed by session manager first, populating hash→channelId before TrackTransfer handles the offer. |
+| Cache-hit fast path | If cached file already exists, `onTcpMessageReceived` loads immediately via `loadCachedTrack()` without waiting for `trackReceived`. Removes hash from map inline. |
+| `loadCachedTrack` | Removes hash from map at call site (caller removes). Sets `m_localTrackLoaded[ch] = true` and `m_remoteReady[ch] = true` (receiver assumes sender ready). Calls `updateGating(ch)`. |
+| Receiver ready semantics | On receiver, `m_remoteReady[ch]` set to true when track received (sender implicitly has the track). Receiver-side gating becomes ready once track is loaded locally. |
+| Teardown | `leaveSession` / `deleteSubComponents` resets all ready COs to 0.0, unmutes all channels (mute=0.0), clears incoming map. Ready COs NOT deleted between sessions (reused). |

@@ -18,6 +18,8 @@
 
 class ControlObject;
 class ControlProxy;
+class Library;
+class PlayerManager;
 class TrackCache;
 class TrackTransfer;
 
@@ -45,6 +47,8 @@ class NetmixSessionManager : public QObject {
     SessionState state() const { return m_state; }
 
     void setTrackCache(TrackCache* cache);
+    void setPlayerManager(PlayerManager* pm) { m_pPlayerManager = pm; }
+    void setLibrary(Library* lib) { m_pLibrary = lib; }
 
     void notifyTrackLoaded(int channelId,
             const QString& filePath,
@@ -72,6 +76,7 @@ class NetmixSessionManager : public QObject {
     void onTcpMessageReceived(const NetmixMessage& msg);
     void onTrackTransferComplete(const QString& hash);
     void onTrackTransferFailed(const QString& hash, const QString& reason);
+    void onTrackReceived(const QString& hash, const QString& filePath);
 
   private:
     void setState(SessionState state);
@@ -79,6 +84,8 @@ class NetmixSessionManager : public QObject {
     void onTcpDisconnected();
     void deleteSubComponents();
     void applyPreAssignment();
+    void updateGating(int channelId);
+    void loadCachedTrack(const QString& hash, const QString& filePath, quint16 channelId);
 
     SessionState m_state = Idle;
     bool m_enabled = false;
@@ -104,6 +111,20 @@ class NetmixSessionManager : public QObject {
     QVector<bool> m_remoteReady;
     QVector<QString> m_currentHash;
     QHash<QString, quint16> m_pendingTransfers;
+
+    // Gating: per-channel ready COs (create once) and mute proxies
+    // Ready COs are created as read-only ControlObject in ctor.
+    // When duplicate ctor occurs (test), later instances use a proxy.
+    QVector<ControlObject*> m_pDeckReadyCOs;
+    QVector<ControlProxy*> m_pDeckReadyProxies;
+    QVector<ControlProxy*> m_pMuteProxies;
+
+    // Incoming transfer hash -> channelId map (populated from TrackOffer)
+    QHash<QString, quint16> m_incomingChannelMap;
+
+    // External services needed for remote deck load and analysis
+    PlayerManager* m_pPlayerManager = nullptr;
+    Library* m_pLibrary = nullptr;
 
     // Channel ownership
     ChannelOwnership* m_pChannelOwnership = nullptr;

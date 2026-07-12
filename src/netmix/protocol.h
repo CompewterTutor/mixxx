@@ -8,7 +8,7 @@
 #include <variant>
 
 constexpr quint32 kNetmixMagic = 0x584D4E;
-constexpr quint16 kNetmixProtocolVersion = 4;
+constexpr quint16 kNetmixProtocolVersion = 5;
 
 enum class NetmixMessageType : quint16 {
     Hello = 0,
@@ -131,6 +131,7 @@ struct NetmixTrackOffer {
     quint64 size = 0;
     QString name;
     QString mime;
+    quint16 channelId = 0; // v5: which deck to load into on receiver
 };
 
 QDataStream& operator<<(QDataStream& stream, const NetmixTrackOffer& msg);

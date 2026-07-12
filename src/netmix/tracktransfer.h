@@ -20,7 +20,8 @@ class TrackTransfer : public QObject {
     void sendTrack(const QString& filePath,
             const QString& hash,
             const QString& name,
-            const QString& mime);
+            const QString& mime,
+            quint16 channelId = 0);
     void cancelAll();
 
     static QString mimeToExt(const QString& mime);
