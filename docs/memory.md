@@ -204,6 +204,19 @@
 | Continuous values | Snap only touches tick, never value (no value parameter in `snap()`). |
 | Audio-callback purity | Quantizer runs only in Qt thread (same as session manager). No locks, no allocations. |
 
+## 2026-07-12: Phase Merge 1.4 (Task 1.4.6)
+
+| Decision | Value |
+|---|---|
+| Merge commit | `45a98712d6` on `feat/rollback-network-mixing` |
+| Strategy | `--no-ff` (branch history preserved) |
+| Source | `release/1.4` (15 commits: tasks 1.4.1–1.4.5 plus merge/docs commits) |
+| Pre-merge gate | `ctest -R Netmix`: 123/123 pass |
+| Post-merge gate | `ctest -R Netmix`: 123/123 pass |
+| Trunk tree after merge | Identical to `release/1.4` (diff empty) |
+| Deferred re: ClockSync | ClockSync UDP port-sharing still not resolved. `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.5. See memory.md line 132. |
+| Phase 1.5 next | Begin on `task-1.5.1` off `release/1.5` (created from trunk after this merge) |
+
 ## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
 
 | Decision | Value |

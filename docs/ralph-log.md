@@ -66,3 +66,11 @@ DONE: 1.4.3 merged into release/1.4.
 ## 2026-07-12 16:25
 
 DONE: 1.4.4 merged into release/1.4.
+
+## 2026-07-12 16:44
+
+DONE: 1.4.5 merged into release/1.4.
+
+## 2026-07-12 16:48
+
+PHASE_COMPLETE: 1.4 merged to feat/rollback-network-mixing. 123/123 Netmix tests pass (pre and post merge). release/1.5 branch created.
