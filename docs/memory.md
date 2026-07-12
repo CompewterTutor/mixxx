@@ -282,6 +282,19 @@
 | SHA-256 | `QCryptographicHash::Sha256` |
 | Thread | Qt thread only, no locks |
 
+## 2026-07-12: Cue Point / Hotcue / Loop Metadata Transfer (Task 1.6.5)
+
+| Decision | Value |
+|---|---|
+| Wire type | `NetmixCueSnapshot` (type=15) sent after `TrackComplete` for a given hash (TCP ordering guarantee). Always sent, even when cue list is empty — receiver treats empty list as valid snapshot and proceeds. |
+| CueSnapshot positions | Serialized as engine sample positions (`double`, stereo frames × 2) via `toEngineSamplePosMaybeInvalid()` / `fromEngineSamplePosMaybeInvalid()`. Both peers have identical audio (SHA-256 verified), so frame↔sample conversion is deterministic. |
+| Color encoding | `quint32` (0x00RRGGBB). Always present in wire format. `0x000000` used for absent colors. `RgbColor(code_t)` constructor reconstructs on receiver. |
+| Receiver ready gating | `TrackReady` is NOT sent (and `trackReceived` NOT emitted) until BOTH the file (`TrackComplete`) and cue data (`CueSnapshot`) have arrived. Either may arrive first; the receiver stores the first-arriving component and waits for the second. |
+| Cue data flow | Sender: `notifyTrackLoaded` → `sendTrack()` + `sendCueSnapshot()` (buffered, sent after TrackComplete by `sendNextBatch`). Receiver: `TrackTransfer` defers TrackReady in `handleTrackComplete` if cues not yet available; `handleCueSnapshot` completes the handshake when both are present. |
+| Session manager integration | `cueSnapshotReceived` signal wired from `TrackTransfer` → `NetmixSessionManager::onCueSnapshotReceived` → stored in `m_pendingCueData[hash]`. Applied in `loadCachedTrack` via `Track::setCuePoints()` before the deck is marked ready. |
+| No protocol version bump | Adding message type 15 is backward-compatible — unknown types are rejected by existing `default: qWarning()` catch. |
+| No scope creep | Cue snapshot is point-to-point metadata. No engine-thread changes, audio over wire, or protocol version bumps. |
+
 ## 2026-07-12: Live-Sound Gating + Remote Deck Load + Analysis (Task 1.6.4)
 
 | Decision | Value |
