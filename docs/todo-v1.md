@@ -150,7 +150,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.4 — Rollback Core
 
-- [ ] `1.4.1` InputBuffer — per-peer tick-indexed input ring
+- [x] `1.4.1` InputBuffer — per-peer tick-indexed input ring
   - **Goal:** `src/netmix/inputbuffer.h/.cpp`: fixed-size ring (default 256 ticks) of remote InputFrames keyed by tick; frames marked confirmed (received) or predicted; `firstDivergentTick()` compares newly confirmed frames against what was predicted for those ticks. Local input ring kept too (needed for re-simulation).
   - **Touches:** `src/netmix/inputbuffer.h`, `src/netmix/inputbuffer.cpp`, `CMakeLists.txt`, `src/test/netmixinputbuffer_test.cpp`
   - **Success:** Late frames slot into correct ticks; divergence detection exact; ring wrap correct at capacity.
@@ -158,7 +158,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.4.2` Prediction — hold-last-input
+- [x] `1.4.2` Prediction — hold-last-input
   - **Goal:** `src/netmix/prediction.h/.cpp`: for ticks with no confirmed remote frame, predict empty event set with continuous controls holding last known value (i.e. prediction = "no new input"). Pluggable interface (strategy class) so velocity-extrapolation can be added later without touching callers.
   - **Touches:** `src/netmix/prediction.h`, `src/netmix/prediction.cpp`, `CMakeLists.txt`, `src/test/netmixprediction_test.cpp`
   - **Success:** Predicted frames deterministic given buffer state; interface allows swapping strategy.
@@ -166,7 +166,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Low
   - **Model:** Standard
 
-- [ ] `1.4.3` RollbackEngine — snapshot, rollback, re-simulate
+- [x] `1.4.3` RollbackEngine — snapshot, rollback, re-simulate
   - **Goal:** `src/netmix/rollbackengine.h/.cpp`: per-tick snapshot of synced control state (map wireId→double, plus last-applied discrete event ids) into a ring covering the rollback window (default 8 ticks, max 30, from session params). On confirmed input diverging from prediction at tick T ≥ now−window: restore snapshot(T−1), re-apply confirmed remote + recorded local input from T..now via ControlApplier, re-predict the still-unconfirmed tail. Input older than the window: log, count, apply-forward only (no rollback) — bounded correction like GGPO. Runs in Qt thread on tick boundary; never touches audio thread directly.
   - **Touches:** `src/netmix/rollbackengine.h`, `src/netmix/rollbackengine.cpp`, `CMakeLists.txt`, `src/test/netmixrollback_test.cpp`
   - **Success:** Scripted scenarios (late fader move, late play press, conflicting prediction) end with identical final control state as a zero-latency reference run.
@@ -174,7 +174,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.4.4` Interpolation reconciliation for continuous controls
+- [x] `1.4.4` Interpolation reconciliation for continuous controls
   - **Goal:** After a rollback correction, continuous controls must not snap: route corrections through `ControlApplier::applyRamped` over `min(correction_magnitude-scaled, 4) ticks`; discrete controls re-fire exact. Ramp cancellation: a newer correction or fresh confirmed input on the same control supersedes an in-flight ramp.
   - **Touches:** `src/netmix/rollbackengine.h/.cpp`, `src/netmix/controlapplier.h/.cpp`, `src/test/netmixrollback_test.cpp`
   - **Success:** Corrected fader path is continuous (no inter-tick jump larger than ramp step) while converging to reference final value.
@@ -182,7 +182,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.4.5` Optional 64th-note quantization of input events
+- [x] `1.4.5` Optional 64th-note quantization of input events
   - **Goal:** `src/netmix/quantizer.h/.cpp`: when enabled (session param + `[Netmix],quantize` CO), snap event ticks to the nearest 64th-note boundary derived from the sync-leader BPM (`EngineSync`, `src/engine/sync/enginesync.h`) and session tick rate; applies symmetrically on both peers before capture-send and before apply, so replay stays consistent. Discrete transport events snap; continuous knob streams pass through unquantized (only their timestamps snap).
   - **Touches:** `src/netmix/quantizer.h`, `src/netmix/quantizer.cpp`, `src/netmix/netmixsessionmanager.cpp`, `CMakeLists.txt`, `src/test/netmixquantizer_test.cpp`
   - **Success:** At 120 BPM / 240 Hz ticks, 64th grid = 7.8125 ticks — snapping matches hand-computed boundaries; disabled path is byte-identical passthrough.

@@ -46,3 +46,23 @@ DONE: 1.3.5 merged into release/1.3.
 ## 2026-07-12 15:08
 
 All 1.3 tasks complete. Starting phase review.
+
+## 2026-07-12 15:12
+
+PHASE_COMPLETE: 1.3 merged to feat/rollback-network-mixing after review approval.
+
+## 2026-07-12 15:22
+
+DONE: 1.4.1 merged into release/1.4.
+
+## 2026-07-12 15:35
+
+DONE: 1.4.2 merged into release/1.4.
+
+## 2026-07-12 16:06
+
+DONE: 1.4.3 merged into release/1.4.
+
+## 2026-07-12 16:25
+
+DONE: 1.4.4 merged into release/1.4.

@@ -1,6 +1,7 @@
 #include "netmix/netmixsessionmanager.h"
 
 #include "control/controlobject.h"
+#include "control/controlproxy.h"
 #include "moc_netmixsessionmanager.cpp"
 #include "util/logger.h"
 
@@ -15,11 +16,15 @@ NetmixSessionManager::NetmixSessionManager(QObject* parent)
     m_pStatusCO = new ControlObject(ConfigKey("[Netmix]", "status"));
     m_pStatusCO->setReadOnly();
     m_pStatusCO->forceSet(static_cast<double>(Idle));
+
+    m_pQuantizeCO = new ControlObject(ConfigKey("[Netmix]", "quantize"));
+    m_pQuantizeCO->set(0.0);
 }
 
 NetmixSessionManager::~NetmixSessionManager() {
     deleteSubComponents();
     delete m_pStatusCO;
+    delete m_pQuantizeCO;
 }
 
 void NetmixSessionManager::setState(SessionState state) {
@@ -164,6 +169,20 @@ void NetmixSessionManager::onTcpConnected() {
     m_pApplier = new ControlApplier(this);
     m_pApplier->setProxies(m_pCapture->proxies());
 
+    // Create quantizer
+    m_pQuantizer = new NetmixQuantizer(this);
+    m_pBpmProxy = new ControlProxy(
+            ConfigKey(QStringLiteral("[InternalClock]"), QStringLiteral("bpm")),
+            this);
+
+    // Wire quantize CO -> quantizer (non-zero = enabled)
+    connect(m_pQuantizeCO, &ControlObject::valueChanged,
+            this, [this](double value) {
+                if (m_pQuantizer) {
+                    m_pQuantizer->setEnabled(value > 0.5);
+                }
+            });
+
     // Wire capture -> packer
     connect(m_pCapture, &ControlCapture::captured,
             m_pPacker, &InputFramePacker::addEvent);
@@ -183,16 +202,30 @@ void NetmixSessionManager::onTickAdvanced(quint32 tick) {
     if (!m_pPacker || !m_pUdpChannel) {
         return;
     }
-    m_pPacker->finishTick(tick);
+
+    quint32 snappedTick = tick;
+    if (m_pQuantizer && m_pBpmProxy) {
+        double bpm = m_pBpmProxy->get();
+        snappedTick = m_pQuantizer->snap(tick, bpm, SessionClock::kTickRate);
+    }
+
+    m_pPacker->finishTick(snappedTick);
     m_pUdpChannel->sendFrames(m_pPacker->framesForSend());
 }
 
 void NetmixSessionManager::onInputFrameReceived(quint32 baseTick,
         QVector<NetmixInputFrameEvent> events) {
-    Q_UNUSED(baseTick);
     if (!m_pApplier) {
         return;
     }
+
+    // Snap tick for consistent replay (value consumed when InputBuffer is wired)
+    quint32 snappedTick = baseTick;
+    if (m_pQuantizer && m_pBpmProxy) {
+        double bpm = m_pBpmProxy->get();
+        snappedTick = m_pQuantizer->snap(baseTick, bpm, SessionClock::kTickRate);
+    }
+    Q_UNUSED(snappedTick);
     m_pCapture->setMuted(true);
     for (const auto& evt : events) {
         m_pApplier->apply(evt.wireId, evt.value);
@@ -225,6 +258,15 @@ void NetmixSessionManager::deleteSubComponents() {
     if (m_pPacker) {
         m_pPacker->disconnect(this);
     }
+    if (m_pQuantizer) {
+        m_pQuantizer->disconnect(this);
+    }
+    if (m_pBpmProxy) {
+        m_pBpmProxy->disconnect(this);
+    }
+    if (m_pQuantizeCO) {
+        m_pQuantizeCO->disconnect(this);
+    }
 
     // Use deleteLater to avoid deleting an object while it's emitting a signal
     if (m_pApplier) {
@@ -234,6 +276,14 @@ void NetmixSessionManager::deleteSubComponents() {
     if (m_pPacker) {
         m_pPacker->deleteLater();
         m_pPacker = nullptr;
+    }
+    if (m_pQuantizer) {
+        m_pQuantizer->deleteLater();
+        m_pQuantizer = nullptr;
+    }
+    if (m_pBpmProxy) {
+        m_pBpmProxy->deleteLater();
+        m_pBpmProxy = nullptr;
     }
     if (m_pCapture) {
         m_pCapture->deleteLater();

@@ -147,3 +147,67 @@
 | Trunk tree after merge | Identical to `release/1.3` (diff empty) |
 | Deferred: ClockSync UDP port-sharing | `ClockSync::start` fails on macOS due to `SO_REUSEPORT` not exposed by Qt. Creation commented out in `NetmixSessionManager::onTcpConnected`. Unresolved — fix in Phase 1.4/1.5. See memory.md 2026-07-12 line 132. |
 | Phase 1.4 next | Begin on `task-1.4.1` off `release/1.4` (created from trunk after this merge) |
+
+## 2026-07-12: InputBuffer Ring Buffer (Task 1.4.1)
+
+| Decision | Value |
+|---|---|
+| Capacity | 256 ticks (const `InputBuffer::kDefaultCapacity`). Resizable via `setCapacity`, which triggers `clear`. |
+| Indexing | `tick % capacity` modular arithmetic. Window `[oldestTick, newestTick]` maintained. Slots outside window evicted on window advance. |
+| Divergence detection | `eventsDiffer()` compares predicted vs confirmed events bidirectionally: same wireId different value, extra wireId in confirmed, missing wireId in predicted — all trigger divergence. Uses `qFuzzyCompare` for double comparison. |
+| Cached divergence | `m_cachedFirstDivergentTick` updated on `insertRemoteConfirmed` when divergence detected. `firstDivergentTick()` returns cached if set, otherwise scans all slots. Reset on `clear()` and `advanceWindow()` when empty. |
+| Tick comparison | Modular arithmetic via `tickLt`/`tickLe`/`tickGt`/`tickGe` using `(qint32)(a - b)` (window << 2^31, safe for capacity 256). |
+| No thread safety | InputBuffer lives in Qt thread (same as Capture/Applier). No locks. Not accessed from audio callback. |
+| Event limit | `kMaxEventsPerTick = 32` (duplicated from `InputFramePacker`). Events truncated to this count on insert. |
+
+## 2026-07-12: RollbackEngine (Task 1.4.3)
+
+| Decision | Value |
+|---|---|
+| Snapshot storage | Ring buffer of `m_windowSize` entries. Each entry is `QVector<double>` sized to `m_proxies.size()` (number of allowlist entries). Indexed by `tick % m_windowSize`. |
+| Window | Default 8 ticks, max 30 (from `kDefaultWindow`/`kMaxWindow`). Set via `setWindowSize()`, which clears existing snapshots. |
+| Snapshot proxies | RollbackEngine creates its own `ControlProxy` instances (one per allowlist entry) for reading CO values at snapshot time. Owns them via Qt parent chain (`this`). |
+| Rollback trigger | `onTick()` takes snapshot then checks `InputBuffer::firstDivergentTick()`. If divergence within window, restores snapshot at T-1, re-applies confirmed remote + local from T..now, predicts unconfirmed tail via `PredictionStrategy`. |
+| Window exceeded | Divergent tick older than `currentTick - windowSize`: logs once (`qWarning` with `[Netmix]` prefix), counts, emits `windowExceeded(tick)`, applies the confirmed frame directly (forward correction only, no rollback). |
+| Re-simulation apply | All value changes during re-simulation go through `ControlApplier::apply()`, which shares proxy instances with `ControlCapture` — echo suppression automatically filters rollback inputs from capture output. |
+| Apply order per tick | Confirmed remote first, then local (local overrides remote for same wireId within a tick). Then prediction for unconfirmed ticks. |
+| Snapshot recovery | If exact snapshot for T-1 isn't found (ring wrap), scans all slots for the closest snapshot at or before T-1. If none found — logs warning and skips rollback. |
+| No clock dependency | RollbackEngine does NOT own or use SessionClock. Ticks come from the caller (session manager). Snapshotring is self-contained. |
+| Tear-down | `qDeleteAll(m_proxies)` in destructor (Qt parented, but explicit for test cleanliness). |
+| Stats | `rollbackCount()` and `windowExceededCount()` exposed for monitoring. |
+| Signals | `rollbackPerformed(quint32 fromTick, quint32 toTick)` and `windowExceeded(quint32 tick)` for session manager / UI monitoring. |
+
+## 2026-07-12: Interpolation Reconciliation (Task 1.4.4)
+
+| Decision | Value |
+|---|---|
+| Ramp constants | `kRampScale=4.0`, `kMaxRampTicks=4`. Ramp duration = `qBound(1, int(|target-current| * 4.0), 4)` ticks. A 0.25 correction ramps 1 tick (~4ms at 240Hz), a 1.0 correction ramps 4 ticks (~17ms). |
+| `advanceTick` in `onTick` | `m_pApplier->advanceTick()` called at `onTick` entry, before `takeSnapshot`. Ramps progress one tick per engine tick. |
+| Re-simulation ramp | Confirmed remote Continuous events during re-sim go through `applyRamped` instead of `apply`. Discrete/Seek still use `apply` (snap). |
+| Corrected wireId set | `QSet<quint16> rampedWireIds` tracked during re-sim. Predicted events for wireIds in this set are skipped. Local events on ramped wireIds `apply()` (snap cancelling the ramp) and remove from the set. |
+| Ramp supersession | Newer confirmed correction on same wireId calls `applyRamped` again (ControlApplier supersedes in-flight ramp). Local input on same wireId calls `apply` (snap, ramp cancelled). |
+| Window-exceeded path | No ramp — forward correction still uses `apply()` (snap). Acceptable — late-arriving packets outside window are rare. |
+| Existing tests | Updated to expect ramp baseline (0.0) after rollback instead of immediate snap value. New ramp-specific tests added. |
+
+## 2026-07-12: Optional 64th-Note Quantizer (Task 1.4.5)
+
+| Decision | Value |
+|---|---|
+| 64th-grid formula | `tpg = tickRate * 60.0 / (bpm * 16.0)` — one 64th note = 1/16 quarter note. Snapped = `qRound(tick / tpg) * tpg + 0.5` truncated to `quint32`. |
+| Enabled by `[Netmix],quantize` CO | CO created in ctor (default 0 = off). `valueChanged` → `setEnabled(value > 0.5)` in `onTcpConnected`. |
+| BPM source | `[InternalClock], bpm` via `ControlProxy` created alongside quantizer in `onTcpConnected`. Read per-tick, safe (no lock, just `get()`). |
+| BPM guard | `bpm <= 0.0` → passthrough. Safe against uninitialized clock. |
+| Disabled passthrough | `m_enabled == false` → byte-identical `return tick`. |
+| Symmetry | Both peers compute snap independently from same BPM. No wire format change. |
+| Snapped tick in send path | `onTickAdvanced` snaps tick before `finishTick`. |
+| Snapped tick in recv path | `onInputFrameReceived` snaps `baseTick` (consumed when InputBuffer is wired later). |
+| Continuous values | Snap only touches tick, never value (no value parameter in `snap()`). |
+| Audio-callback purity | Quantizer runs only in Qt thread (same as session manager). No locks, no allocations. |
+
+## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
+
+| Decision | Value |
+|---|---|
+| Strategy interface | `PredictionStrategy` abstract base class with virtual `predict(tick, buffer)`. `HoldLastPrediction` is the initial implementation. Enables swapping to velocity-extrapolation or NN prediction without touching callers. |
+| Hold-last algorithm | For ticks with a confirmed remote frame: return it as-is. For ticks without: search backward up to `kDefaultCapacity` ticks, find the most recent confirmed frame, copy only `ControlKind::Continuous` events (volume/pregain/filter/crossfader). Discrete/seek events NOT carried forward — they fire once and don't hold. |
+| InputBuffer API extension | `isRemoteConfirmed(tick)` added to `InputBuffer` (was missing from 1.4.1). Returns true only if slot is occupied, tick matches, AND `confirmed` flag is set. Required by prediction to distinguish confirmed data from previously-predicted frames during re-simulation. Without this, re-prediction after a rollback would return stale predicted frames with outdated last-known values. |
