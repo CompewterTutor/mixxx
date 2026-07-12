@@ -150,7 +150,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.4 — Rollback Core
 
-- [ ] `1.4.1` InputBuffer — per-peer tick-indexed input ring
+- [x] `1.4.1` InputBuffer — per-peer tick-indexed input ring
   - **Goal:** `src/netmix/inputbuffer.h/.cpp`: fixed-size ring (default 256 ticks) of remote InputFrames keyed by tick; frames marked confirmed (received) or predicted; `firstDivergentTick()` compares newly confirmed frames against what was predicted for those ticks. Local input ring kept too (needed for re-simulation).
   - **Touches:** `src/netmix/inputbuffer.h`, `src/netmix/inputbuffer.cpp`, `CMakeLists.txt`, `src/test/netmixinputbuffer_test.cpp`
   - **Success:** Late frames slot into correct ticks; divergence detection exact; ring wrap correct at capacity.
