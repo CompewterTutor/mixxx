@@ -4,6 +4,7 @@
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "library/library.h"
+#include "mixer/basetrackplayer.h"
 #include "mixer/playermanager.h"
 #include "moc_netmixsessionmanager.cpp"
 #include "netmix/channelownership.h"
@@ -285,6 +286,8 @@ void NetmixSessionManager::onTcpConnected() {
                 this, &NetmixSessionManager::onTrackTransferFailed);
         connect(m_pTrackTransfer, &TrackTransfer::trackReceived,
                 this, &NetmixSessionManager::onTrackReceived);
+        connect(m_pTrackTransfer, &TrackTransfer::cueSnapshotReceived,
+                this, &NetmixSessionManager::onCueSnapshotReceived);
     }
 
     // Initialize ready-state tracking
@@ -452,6 +455,31 @@ void NetmixSessionManager::notifyTrackLoaded(int channelId,
     m_pTrackTransfer->sendTrack(filePath, hash, name, mime,
             static_cast<quint16>(channelId));
 
+    // Extract and send cue snapshot from the local track
+    QString group = PlayerManager::groupForDeck(channelId - 1);
+    BaseTrackPlayer* pPlayer = m_pPlayerManager->getPlayer(group);
+    if (pPlayer) {
+        TrackPointer pTrack = pPlayer->getLoadedTrack();
+        if (pTrack) {
+            QList<CuePointer> cues = pTrack->getCuePoints();
+            QVector<NetmixCueSnapshotEntry> entries;
+            entries.reserve(static_cast<int>(cues.size()));
+            for (const auto& pCue : cues) {
+                NetmixCueSnapshotEntry entry;
+                entry.type = static_cast<quint16>(pCue->getType());
+                entry.hotcueIndex = pCue->getHotCue();
+                entry.startPositionSamples =
+                        pCue->getPosition().toEngineSamplePosMaybeInvalid();
+                entry.endPositionSamples =
+                        pCue->getEndPosition().toEngineSamplePosMaybeInvalid();
+                entry.color = static_cast<quint32>(pCue->getColor());
+                entry.label = pCue->getLabel();
+                entries.append(entry);
+            }
+            m_pTrackTransfer->sendCueSnapshot(hash, entries);
+        }
+    }
+
     updateGating(channelId);
 }
 
@@ -516,6 +544,14 @@ void NetmixSessionManager::onTrackReceived(
     loadCachedTrack(hash, filePath, channelId);
 }
 
+void NetmixSessionManager::onCueSnapshotReceived(
+        const QString& hashHex,
+        const QVector<NetmixCueSnapshotEntry>& cues) {
+    if (!m_pendingCueData.contains(hashHex)) {
+        m_pendingCueData[hashHex] = cues;
+    }
+}
+
 void NetmixSessionManager::onTcpDisconnected() {
     if (m_pCapture) {
         m_pCapture->stop();
@@ -553,7 +589,6 @@ void NetmixSessionManager::updateGating(int channelId) {
 
 void NetmixSessionManager::loadCachedTrack(
         const QString& hash, const QString& filePath, quint16 channelId) {
-    Q_UNUSED(hash)
     if (channelId >= 5 || !m_pPlayerManager) {
         return;
     }
@@ -563,6 +598,27 @@ void NetmixSessionManager::loadCachedTrack(
         kLogger.warning() << "loadCachedTrack: failed to create temporary track from"
                           << filePath;
         return;
+    }
+
+    // Apply cue snapshot data if available
+    auto cueIt = m_pendingCueData.find(hash);
+    if (cueIt != m_pendingCueData.end()) {
+        QList<CuePointer> cuePointers;
+        cuePointers.reserve(static_cast<int>(cueIt.value().size()));
+        for (const auto& entry : cueIt.value()) {
+            auto startPos = mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
+                    entry.startPositionSamples);
+            auto endPos = mixxx::audio::FramePos::fromEngineSamplePosMaybeInvalid(
+                    entry.endPositionSamples);
+            auto type = static_cast<mixxx::CueType>(static_cast<int>(entry.type));
+            mixxx::RgbColor color(entry.color);
+            CuePointer pCue(
+                    new Cue(type, entry.hotcueIndex, startPos, endPos, color));
+            pCue->setLabel(entry.label);
+            cuePointers.append(pCue);
+        }
+        pTrack->setCuePoints(cuePointers);
+        m_pendingCueData.erase(cueIt);
     }
 
     QString group = PlayerManager::groupForDeck(channelId - 1);
@@ -668,6 +724,7 @@ void NetmixSessionManager::deleteSubComponents() {
     m_currentHash.clear();
     m_pendingTransfers.clear();
     m_incomingChannelMap.clear();
+    m_pendingCueData.clear();
 
     if (m_pTcpSession) {
         m_pTcpSession->deleteLater();

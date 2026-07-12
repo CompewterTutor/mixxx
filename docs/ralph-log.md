@@ -94,3 +94,7 @@ DONE: 1.6.2 merged into release/1.6.
 ## 2026-07-12 18:45
 
 DONE: 1.6.3 merged into release/1.6.
+
+## 2026-07-12 19:20
+
+DONE: 1.6.4 merged into release/1.6.

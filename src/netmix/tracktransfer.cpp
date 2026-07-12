@@ -81,6 +81,11 @@ void TrackTransfer::sendTrack(
     m_pSession->sendMessage({NetmixMessageType::TrackOffer, offer});
 }
 
+void TrackTransfer::sendCueSnapshot(const QString& hashHex,
+        const QVector<NetmixCueSnapshotEntry>& cues) {
+    m_pendingOutgoingCues[hashHex] = cues;
+}
+
 void TrackTransfer::cancelAll() {
     auto outgoingHashes = m_outgoing.keys();
     for (const QString& hash : outgoingHashes) {
@@ -91,6 +96,10 @@ void TrackTransfer::cancelAll() {
     for (const QString& hash : incomingHashes) {
         cleanupIncoming(hash);
     }
+
+    m_pendingOutgoingCues.clear();
+    m_pendingCueFinalPaths.clear();
+    m_receivedCueData.clear();
 }
 
 void TrackTransfer::onMessageReceived(const NetmixMessage& msg) {
@@ -118,6 +127,11 @@ void TrackTransfer::onMessageReceived(const NetmixMessage& msg) {
     case NetmixMessageType::TrackReady:
         if (const auto* p = std::get_if<NetmixTrackReady>(&msg.payload)) {
             handleTrackReady(*p);
+        }
+        break;
+    case NetmixMessageType::CueSnapshot:
+        if (const auto* p = std::get_if<NetmixCueSnapshot>(&msg.payload)) {
+            handleCueSnapshot(*p);
         }
         break;
     default:
@@ -173,6 +187,16 @@ void TrackTransfer::sendNextBatch() {
         NetmixTrackComplete complete;
         complete.hash = ot->hashRaw;
         m_pSession->sendMessage({NetmixMessageType::TrackComplete, complete});
+
+        // Send cue snapshot (always, even if empty) so receiver doesn't hang
+        NetmixCueSnapshot snapshot;
+        snapshot.hash = ot->hashRaw;
+        auto cueIt = m_pendingOutgoingCues.find(ot->hash);
+        if (cueIt != m_pendingOutgoingCues.end()) {
+            snapshot.cues = cueIt.value();
+            m_pendingOutgoingCues.erase(cueIt);
+        }
+        m_pSession->sendMessage({NetmixMessageType::CueSnapshot, snapshot});
     } else {
         // More chunks remain — yield to event loop for control messages
         QTimer::singleShot(0, this, &TrackTransfer::sendNextBatch);
@@ -403,14 +427,27 @@ void TrackTransfer::handleTrackComplete(const NetmixTrackComplete& complete) {
         return;
     }
 
+    // Check if cue data already arrived (before cleanupIncoming,
+    // which clears the cue maps)
+    auto cueIt = m_receivedCueData.find(hashHex);
+    bool cuesReady = (cueIt != m_receivedCueData.end());
+    if (cuesReady) {
+        m_receivedCueData.erase(cueIt);
+    }
+
     cleanupIncoming(hashHex);
 
-    // Send TrackReady
-    NetmixTrackReady ready;
-    ready.hash = complete.hash;
-    m_pSession->sendMessage({NetmixMessageType::TrackReady, ready});
+    if (cuesReady) {
+        // Both file and cues ready — send TrackReady and emit trackReceived
+        NetmixTrackReady ready;
+        ready.hash = complete.hash;
+        m_pSession->sendMessage({NetmixMessageType::TrackReady, ready});
 
-    emit trackReceived(hashHex, finalPath);
+        emit trackReceived(hashHex, finalPath);
+    } else {
+        // Wait for CueSnapshot before completing
+        m_pendingCueFinalPaths[hashHex] = finalPath;
+    }
 }
 
 void TrackTransfer::handleTrackReady(const NetmixTrackReady& ready) {
@@ -422,6 +459,32 @@ void TrackTransfer::handleTrackReady(const NetmixTrackReady& ready) {
 
     cleanupOutgoing(hashHex);
     emit complete(hashHex);
+}
+
+void TrackTransfer::handleCueSnapshot(const NetmixCueSnapshot& snapshot) {
+    QString hashHex = QString::fromLatin1(snapshot.hash.toHex());
+
+    // Store received cue data
+    m_receivedCueData[hashHex] = snapshot.cues;
+
+    // Emit signal so session manager can store cues
+    emit cueSnapshotReceived(hashHex, snapshot.cues);
+
+    // Check if TrackComplete already processed
+    auto pathIt = m_pendingCueFinalPaths.find(hashHex);
+    if (pathIt != m_pendingCueFinalPaths.end()) {
+        QString finalPath = pathIt.value();
+        m_pendingCueFinalPaths.erase(pathIt);
+
+        // Both file and cues ready — send TrackReady and emit trackReceived
+        NetmixTrackReady ready;
+        ready.hash = snapshot.hash;
+        m_pSession->sendMessage({NetmixMessageType::TrackReady, ready});
+
+        emit trackReceived(hashHex, finalPath);
+
+        m_receivedCueData.remove(hashHex);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -452,6 +515,9 @@ void TrackTransfer::cleanupIncoming(const QString& hashHex) {
         it->file = nullptr;
     }
     m_incoming.erase(it);
+
+    m_pendingCueFinalPaths.remove(hashHex);
+    m_receivedCueData.remove(hashHex);
 }
 
 QString TrackTransfer::mimeToExt(const QString& mime) {

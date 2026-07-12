@@ -26,6 +26,7 @@ enum class NetmixMessageType : quint16 {
     TrackComplete = 12,
     TrackReady = 13,
     Bye = 14,
+    CueSnapshot = 15,
 };
 
 struct NetmixProtocolHeader {
@@ -175,6 +176,26 @@ struct NetmixBye {
 QDataStream& operator<<(QDataStream& stream, const NetmixBye& msg);
 QDataStream& operator>>(QDataStream& stream, NetmixBye& msg);
 
+struct NetmixCueSnapshotEntry {
+    quint16 type = 0;
+    qint32 hotcueIndex = -1;
+    double startPositionSamples = -1.0;
+    double endPositionSamples = -1.0;
+    quint32 color = 0;
+    QString label;
+};
+
+QDataStream& operator<<(QDataStream& stream, const NetmixCueSnapshotEntry& entry);
+QDataStream& operator>>(QDataStream& stream, NetmixCueSnapshotEntry& entry);
+
+struct NetmixCueSnapshot {
+    QByteArray hash; // 32 bytes SHA-256
+    QVector<NetmixCueSnapshotEntry> cues;
+};
+
+QDataStream& operator<<(QDataStream& stream, const NetmixCueSnapshot& msg);
+QDataStream& operator>>(QDataStream& stream, NetmixCueSnapshot& msg);
+
 using NetmixPayload = std::variant<
         NetmixHello,
         NetmixHelloAck,
@@ -190,7 +211,8 @@ using NetmixPayload = std::variant<
         NetmixTrackChunk,
         NetmixTrackComplete,
         NetmixTrackReady,
-        NetmixBye>;
+        NetmixBye,
+        NetmixCueSnapshot>;
 
 struct NetmixMessage {
     NetmixMessageType type;

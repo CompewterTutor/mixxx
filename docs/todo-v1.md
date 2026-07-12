@@ -269,7 +269,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Tests:** Extend `NetmixSessionTest` — gating + remote load; manual smoke documented in `docs/netmix-manual-test.md`.
   - **Difficulty:** High
 
-- [ ] `1.6.5` Cue point / hotcue / loop metadata transfer
+- [x] `1.6.5` Cue point / hotcue / loop metadata transfer
   - **Goal:** Local analysis alone does not reproduce the owning DJ's hotcues, main cue, intro/outro, or saved loops — `hotcue_X_activate` messages replicated over the wire (allowlist in `1.4.1`) are meaningless on the remote deck unless its `Track` has matching `CuePointer` entries at the same hotcue indices. Serialize the owning peer's `Track::getCuePoints()` (`src/track/track.h:342`, `Cue` fields: type, hotcue index, start/end sample position, color, label — `src/track/cue.h:15`) into a `CueSnapshot` sent alongside (or immediately after) the `TrackComplete` message from `1.6.2`. On receipt, apply via `Track::setCuePoints()` (`src/track/track.h:348`) before the deck is marked ready in `1.6.3`'s both-ready handshake — analysis-derived beatgrid/waveform still comes from local `Library::analyzeTracks`, but cue points are the sender's authoritative values, not re-derived.
   - **Touches:** `src/netmix/protocol.h/.cpp`, `src/netmix/tracktransfer.cpp`, `src/netmix/netmixsessionmanager.cpp`, `src/test/netmixtracktransfer_test.cpp`
   - **Success:** Loopback transfer carries hotcues/main cue/loops byte-for-byte (position + label + color); remote `Track::getCuePoints()` matches sender's before both-ready fires; a deck is never marked ready with stale/partial cue data.

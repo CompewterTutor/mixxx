@@ -77,6 +77,8 @@ class NetmixSessionManager : public QObject {
     void onTrackTransferComplete(const QString& hash);
     void onTrackTransferFailed(const QString& hash, const QString& reason);
     void onTrackReceived(const QString& hash, const QString& filePath);
+    void onCueSnapshotReceived(const QString& hashHex,
+            const QVector<NetmixCueSnapshotEntry>& cues);
 
   private:
     void setState(SessionState state);
@@ -125,6 +127,9 @@ class NetmixSessionManager : public QObject {
     // External services needed for remote deck load and analysis
     PlayerManager* m_pPlayerManager = nullptr;
     Library* m_pLibrary = nullptr;
+
+    // Pending cue snapshot data (receiver side, applied in loadCachedTrack)
+    QHash<QString, QVector<NetmixCueSnapshotEntry>> m_pendingCueData;
 
     // Channel ownership
     ChannelOwnership* m_pChannelOwnership = nullptr;

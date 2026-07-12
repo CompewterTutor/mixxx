@@ -22,6 +22,8 @@ class TrackTransfer : public QObject {
             const QString& name,
             const QString& mime,
             quint16 channelId = 0);
+    void sendCueSnapshot(const QString& hashHex,
+            const QVector<NetmixCueSnapshotEntry>& cues);
     void cancelAll();
 
     static QString mimeToExt(const QString& mime);
@@ -31,6 +33,8 @@ class TrackTransfer : public QObject {
     void complete(const QString& hash);
     void failed(const QString& hash, const QString& reason);
     void trackReceived(const QString& hash, const QString& filePath);
+    void cueSnapshotReceived(const QString& hashHex,
+            const QVector<NetmixCueSnapshotEntry>& cues);
 
   private slots:
     void onMessageReceived(const NetmixMessage& msg);
@@ -59,6 +63,7 @@ class TrackTransfer : public QObject {
     void handleTrackChunk(const NetmixTrackChunk& chunk);
     void handleTrackComplete(const NetmixTrackComplete& complete);
     void handleTrackReady(const NetmixTrackReady& ready);
+    void handleCueSnapshot(const NetmixCueSnapshot& snapshot);
 
     void cleanupOutgoing(const QString& hashHex);
     void cleanupIncoming(const QString& hashHex);
@@ -67,6 +72,11 @@ class TrackTransfer : public QObject {
     TrackCache* m_pCache;
     QHash<QString, OutgoingTransfer> m_outgoing;
     QHash<QString, IncomingTransfer> m_incoming;
+
+    // Cue snapshot state
+    QHash<QString, QVector<NetmixCueSnapshotEntry>> m_pendingOutgoingCues;
+    QHash<QString, QString> m_pendingCueFinalPaths;
+    QHash<QString, QVector<NetmixCueSnapshotEntry>> m_receivedCueData;
 
     static constexpr qint64 kChunkSize = 65536;
     static constexpr int kMaxChunksPerBatch = 4;
