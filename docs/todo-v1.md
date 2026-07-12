@@ -246,7 +246,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.6.2` Chunked file transfer over TCP with verify + resume
+- [x] `1.6.2` Chunked file transfer over TCP with verify + resume
   - **Goal:** `src/netmix/tracktransfer.h/.cpp`: sender streams TrackOffer {hash, size, name, mime} → receiver TrackAccept {have-bytes for resume} → TrackChunk (64 KiB) sequence → TrackComplete; receiver writes to `<hash>.partial`, renames after full sha256 verify. Transfers run on the TCP session socket interleaved with control messages (chunk messages yield to pending control traffic — bounded queue). Progress signals for UI.
   - **Touches:** `src/netmix/tracktransfer.h`, `src/netmix/tracktransfer.cpp`, `src/netmix/protocol.h/.cpp`, `CMakeLists.txt`, `src/test/netmixtracktransfer_test.cpp`
   - **Success:** Loopback transfer of a multi-MB temp file verifies byte-identical; kill-and-reconnect resumes from partial; corrupted chunk fails verify and re-requests.
