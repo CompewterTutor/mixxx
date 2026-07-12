@@ -2,6 +2,7 @@
 
 #include <QtGlobal>
 
+#include "netmix/channelownership.h"
 #include "util/logger.h"
 
 namespace {
@@ -52,6 +53,16 @@ void ControlApplier::apply(quint16 wireId, double value) {
         return;
     }
 
+    // Ownership check: reject events for channels not owned by remote peer
+    if (m_ownershipFilterEnabled && m_pOwnership) {
+        auto channelId = ControlAllowlist::channelForWireId(wireId);
+        if (channelId.has_value() && !m_pOwnership->isOwnedByRemote(*channelId)) {
+            qWarning("[Netmix] ControlApplier::apply — rejecting event for non-remote-owned channel %u (wireId %u)",
+                     *channelId, wireId);
+            return;
+        }
+    }
+
     // Cancel any in-flight ramp for this wire
     for (auto& ramp : m_ramps) {
         if (ramp.proxyIdx == idx) {
@@ -67,6 +78,16 @@ void ControlApplier::applyRamped(quint16 wireId, double target, int ticks) {
     if (idx < 0 || idx >= m_proxies.size()) {
         qWarning("[Netmix] ControlApplier::applyRamped — unknown wireId %u", wireId);
         return;
+    }
+
+    // Ownership check: reject events for channels not owned by remote peer
+    if (m_ownershipFilterEnabled && m_pOwnership) {
+        auto channelId = ControlAllowlist::channelForWireId(wireId);
+        if (channelId.has_value() && !m_pOwnership->isOwnedByRemote(*channelId)) {
+            qWarning("[Netmix] ControlApplier::applyRamped — rejecting event for non-remote-owned channel %u (wireId %u)",
+                     *channelId, wireId);
+            return;
+        }
     }
 
     // Check if this control should be ramped (only Continuous kind)

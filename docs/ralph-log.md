@@ -74,3 +74,11 @@ DONE: 1.4.5 merged into release/1.4.
 ## 2026-07-12 16:48
 
 PHASE_COMPLETE: 1.4 merged to feat/rollback-network-mixing. 123/123 Netmix tests pass (pre and post merge). release/1.5 branch created.
+
+## 2026-07-12 16:57
+
+DONE: 1.4.6 merged into release/1.4. (Note: loop re-ran task 1.4.6 a second time at 17:15, duplicate log entry deduped here — no functional effect, phase-merge commit was already made.)
+
+## 2026-07-12 17:15
+
+All 1.4 tasks complete. Starting phase review.

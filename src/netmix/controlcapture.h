@@ -6,6 +6,7 @@
 #include "control/controlproxy.h"
 #include "netmix/controlallowlist.h"
 
+class ChannelOwnership;
 class SessionClock;
 
 class ControlCapture : public QObject {
@@ -20,6 +21,7 @@ class ControlCapture : public QObject {
     void setMuted(bool muted) { m_muted = muted; }
     bool isMuted() const { return m_muted; }
 
+    void setOwnership(ChannelOwnership* ownership) { m_pOwnership = ownership; }
     const QVector<ControlProxy*>& proxies() const { return m_proxies; }
 
   signals:
@@ -30,6 +32,7 @@ class ControlCapture : public QObject {
 
     bool m_muted = false;
     const SessionClock* m_pClock = nullptr;
+    ChannelOwnership* m_pOwnership = nullptr;
     QVector<ControlProxy*> m_proxies;
     QVector<AllowlistEntry> m_entries;
 };

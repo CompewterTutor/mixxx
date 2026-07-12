@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QVector>
 
+#include "netmix/channelownership.h"
 #include "netmix/controlapplier.h"
 #include "netmix/controlcapture.h"
 #include "netmix/inputframe.h"
@@ -43,6 +44,7 @@ class NetmixSessionManager : public QObject {
     TcpSession* tcpSession() const { return m_pTcpSession; }
     UdpChannel* udpChannel() const { return m_pUdpChannel; }
     SessionClock& sessionClock() { return m_sessionClock; }
+    ChannelOwnership* channelOwnership() const { return m_pChannelOwnership; }
 
   signals:
     void sessionStateChanged(SessionState newState);
@@ -52,12 +54,15 @@ class NetmixSessionManager : public QObject {
     void onTickAdvanced(quint32 tick);
     void onInputFrameReceived(quint32 baseTick,
             QVector<NetmixInputFrameEvent> events);
+    void onHelloComplete(quint8 peerId, const QVector<quint16>& remotePreassigned);
+    void onTcpMessageReceived(const NetmixMessage& msg);
 
   private:
     void setState(SessionState state);
     void onTcpConnected();
     void onTcpDisconnected();
     void deleteSubComponents();
+    void applyPreAssignment();
 
     SessionState m_state = Idle;
     bool m_enabled = false;
@@ -73,4 +78,8 @@ class NetmixSessionManager : public QObject {
     NetmixQuantizer* m_pQuantizer = nullptr;
     ControlObject* m_pQuantizeCO = nullptr;
     ControlProxy* m_pBpmProxy = nullptr;
+
+    // Channel ownership
+    ChannelOwnership* m_pChannelOwnership = nullptr;
+    QVector<quint16> m_bufferedRemotePreassignment;
 };

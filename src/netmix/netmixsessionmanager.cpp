@@ -3,6 +3,7 @@
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "moc_netmixsessionmanager.cpp"
+#include "netmix/channelownership.h"
 #include "util/logger.h"
 
 namespace {
@@ -75,6 +76,10 @@ void NetmixSessionManager::hostSession(quint16 port) {
 
     connect(m_pTcpSession, &TcpSession::stateChanged,
             this, &NetmixSessionManager::onTcpStateChanged);
+    connect(m_pTcpSession, &TcpSession::helloComplete,
+            this, &NetmixSessionManager::onHelloComplete);
+    connect(m_pTcpSession, &TcpSession::messageReceived,
+            this, &NetmixSessionManager::onTcpMessageReceived);
 
     setState(Connecting);
 }
@@ -108,6 +113,10 @@ void NetmixSessionManager::joinSession(const QHostAddress& address, quint16 port
 
     connect(m_pTcpSession, &TcpSession::stateChanged,
             this, &NetmixSessionManager::onTcpStateChanged);
+    connect(m_pTcpSession, &TcpSession::helloComplete,
+            this, &NetmixSessionManager::onHelloComplete);
+    connect(m_pTcpSession, &TcpSession::messageReceived,
+            this, &NetmixSessionManager::onTcpMessageReceived);
 
     m_pTcpSession->connectToPeer();
     setState(Connecting);
@@ -120,6 +129,9 @@ void NetmixSessionManager::leaveSession() {
 
     if (m_pCapture) {
         m_pCapture->stop();
+    }
+    if (m_pChannelOwnership) {
+        m_pChannelOwnership->autoReleaseAll();
     }
     if (m_pTcpSession) {
         m_pTcpSession->disconnectFromPeer();
@@ -175,6 +187,15 @@ void NetmixSessionManager::onTcpConnected() {
             ConfigKey(QStringLiteral("[InternalClock]"), QStringLiteral("bpm")),
             this);
 
+    // Create channel ownership
+    m_pChannelOwnership = new ChannelOwnership(
+            m_pTcpSession->selfPeerId(), this);
+    m_pCapture->setOwnership(m_pChannelOwnership);
+    m_pApplier->setOwnership(m_pChannelOwnership);
+
+    // Apply buffered pre-assignment from handshake
+    applyPreAssignment();
+
     // Wire quantize CO -> quantizer (non-zero = enabled)
     connect(m_pQuantizeCO, &ControlObject::valueChanged,
             this, [this](double value) {
@@ -194,6 +215,24 @@ void NetmixSessionManager::onTcpConnected() {
     // Wire UDP receive -> applier
     connect(m_pUdpChannel, &UdpChannel::inputFrameReceived,
             this, &NetmixSessionManager::onInputFrameReceived);
+
+    // Wire ownership signals -> TCP sends
+    if (m_pChannelOwnership) {
+        connect(m_pChannelOwnership, &ChannelOwnership::claimRequested,
+                this, [this](quint16 channelId) {
+                    NetmixOwnershipClaim payload;
+                    payload.channelId = channelId;
+                    NetmixMessage msg{NetmixMessageType::OwnershipClaim, payload};
+                    if (m_pTcpSession) m_pTcpSession->sendMessage(msg);
+                });
+        connect(m_pChannelOwnership, &ChannelOwnership::releaseRequested,
+                this, [this](quint16 channelId) {
+                    NetmixOwnershipRelease payload;
+                    payload.channelId = channelId;
+                    NetmixMessage msg{NetmixMessageType::OwnershipRelease, payload};
+                    if (m_pTcpSession) m_pTcpSession->sendMessage(msg);
+                });
+    }
 
     setState(Connected);
 }
@@ -227,18 +266,93 @@ void NetmixSessionManager::onInputFrameReceived(quint32 baseTick,
     }
     Q_UNUSED(snappedTick);
     m_pCapture->setMuted(true);
+    m_pApplier->setOwnershipFilterEnabled(true);
     for (const auto& evt : events) {
         m_pApplier->apply(evt.wireId, evt.value);
     }
+    m_pApplier->setOwnershipFilterEnabled(false);
     m_pCapture->setMuted(false);
+}
+
+void NetmixSessionManager::onHelloComplete(quint8 peerId,
+        const QVector<quint16>& remotePreassigned) {
+    Q_UNUSED(peerId);
+    // Buffer until ChannelOwnership is created in onTcpConnected
+    m_bufferedRemotePreassignment = remotePreassigned;
+    if (m_pChannelOwnership) {
+        applyPreAssignment();
+    }
+}
+
+void NetmixSessionManager::onTcpMessageReceived(const NetmixMessage& msg) {
+    if (!m_pChannelOwnership) {
+        return;
+    }
+
+    switch (msg.type) {
+    case NetmixMessageType::OwnershipClaim: {
+        const auto* p = std::get_if<NetmixOwnershipClaim>(&msg.payload);
+        if (!p) break;
+        quint8 remotePeerId = m_pTcpSession ? m_pTcpSession->remotePeerId() : 1;
+        auto action = m_pChannelOwnership->handleRemoteClaim(
+                p->channelId, remotePeerId);
+        if (action == ChannelOwnership::GrantAction) {
+            NetmixOwnershipGrant grantPayload;
+            grantPayload.channelId = p->channelId;
+            NetmixMessage grantMsg{NetmixMessageType::OwnershipGrant, grantPayload};
+            if (m_pTcpSession) m_pTcpSession->sendMessage(grantMsg);
+        } else if (action == ChannelOwnership::DenyAction) {
+            NetmixOwnershipDeny denyPayload;
+            denyPayload.channelId = p->channelId;
+            denyPayload.reason = 1; // Already owned
+            NetmixMessage denyMsg{NetmixMessageType::OwnershipDeny, denyPayload};
+            if (m_pTcpSession) m_pTcpSession->sendMessage(denyMsg);
+        }
+        break;
+    }
+    case NetmixMessageType::OwnershipGrant: {
+        const auto* p = std::get_if<NetmixOwnershipGrant>(&msg.payload);
+        if (!p) break;
+        m_pChannelOwnership->handleGrant(p->channelId);
+        break;
+    }
+    case NetmixMessageType::OwnershipDeny: {
+        const auto* p = std::get_if<NetmixOwnershipDeny>(&msg.payload);
+        if (!p) break;
+        m_pChannelOwnership->handleDeny(p->channelId, p->reason);
+        break;
+    }
+    case NetmixMessageType::OwnershipRelease: {
+        const auto* p = std::get_if<NetmixOwnershipRelease>(&msg.payload);
+        if (!p) break;
+        m_pChannelOwnership->handleRelease(p->channelId);
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 void NetmixSessionManager::onTcpDisconnected() {
     if (m_pCapture) {
         m_pCapture->stop();
     }
+    if (m_pChannelOwnership) {
+        m_pChannelOwnership->autoReleaseAll();
+    }
     deleteSubComponents();
     setState(Idle);
+}
+
+void NetmixSessionManager::applyPreAssignment() {
+    if (!m_pChannelOwnership || !m_pTcpSession) {
+        return;
+    }
+    m_pChannelOwnership->setLocalPreAssignment(
+            m_pTcpSession->preassignedChannels());
+    m_pChannelOwnership->setRemotePreAssignment(
+            m_bufferedRemotePreassignment);
+    m_pChannelOwnership->resolvePreAssignment();
 }
 
 void NetmixSessionManager::deleteSubComponents() {
@@ -267,6 +381,9 @@ void NetmixSessionManager::deleteSubComponents() {
     if (m_pQuantizeCO) {
         m_pQuantizeCO->disconnect(this);
     }
+    if (m_pChannelOwnership) {
+        m_pChannelOwnership->disconnect(this);
+    }
 
     // Use deleteLater to avoid deleting an object while it's emitting a signal
     if (m_pApplier) {
@@ -292,6 +409,10 @@ void NetmixSessionManager::deleteSubComponents() {
     if (m_pUdpChannel) {
         m_pUdpChannel->deleteLater();
         m_pUdpChannel = nullptr;
+    }
+    if (m_pChannelOwnership) {
+        m_pChannelOwnership->deleteLater();
+        m_pChannelOwnership = nullptr;
     }
     if (m_pTcpSession) {
         m_pTcpSession->deleteLater();

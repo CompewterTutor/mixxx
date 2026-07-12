@@ -42,6 +42,7 @@ QDataStream& operator<<(QDataStream& stream, const NetmixHello& msg) {
     stream << msg.tickRate;
     stream << msg.rollbackWindow;
     stream << msg.udpPort;
+    stream << msg.preassignedChannels;
     return stream;
 }
 
@@ -51,6 +52,7 @@ QDataStream& operator>>(QDataStream& stream, NetmixHello& msg) {
     stream >> msg.tickRate;
     stream >> msg.rollbackWindow;
     stream >> msg.udpPort;
+    stream >> msg.preassignedChannels;
     return stream;
 }
 
@@ -65,6 +67,7 @@ QDataStream& operator<<(QDataStream& stream, const NetmixHelloAck& msg) {
     stream << msg.tickRate;
     stream << msg.rollbackWindow;
     stream << msg.initiatorTick;
+    stream << msg.preassignedChannels;
     return stream;
 }
 
@@ -75,6 +78,7 @@ QDataStream& operator>>(QDataStream& stream, NetmixHelloAck& msg) {
     stream >> msg.tickRate;
     stream >> msg.rollbackWindow;
     stream >> msg.initiatorTick;
+    stream >> msg.preassignedChannels;
     return stream;
 }
 
