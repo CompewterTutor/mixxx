@@ -190,7 +190,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.4.6` Phase merge: release/1.4 → feat/rollback-network-mixing
+- [x] `1.4.6` Phase merge: release/1.4 → feat/rollback-network-mixing
   - **Goal:** Phase review passes, branch merges cleanly into the trunk.
   - **Touches:** todo-v1.md checkboxes
   - **Success:** All 1.4.x tasks checked; review returns PHASE_APPROVED.
@@ -202,7 +202,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.5 — Channel Ownership & Locks
 
-- [ ] `1.5.1` Ownership model and protocol
+- [x] `1.5.1` Ownership model and protocol
   - **Goal:** `src/netmix/channelownership.h/.cpp`: per-channel owner state (Unowned | OwnedLocal | OwnedRemote | PendingClaim); pre-assignment map exchanged in handshake (session params list channels each peer owns ahead of time); Claim/Grant/Deny/Release messages over TCP for open channels.
   - **Touches:** `src/netmix/channelownership.h`, `src/netmix/channelownership.cpp`, `src/netmix/protocol.h/.cpp`, `CMakeLists.txt`, `src/test/netmixownership_test.cpp`
   - **Success:** Pre-assigned channels enter session already owned; claim on unowned channel grants; claim on owned channel denies.
@@ -210,7 +210,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.5.2` Mutex-style reservation with race resolution
+- [x] `1.5.2` Mutex-style reservation with race resolution
   - **Goal:** Simultaneous claims (both peers claim same open channel before seeing each other's claim) resolve deterministically: lower peer id (assigned at handshake, initiator=0) wins; loser auto-converts to Deny locally. Reservation auto-releases on disconnect and on explicit release; optional idle timeout (default off).
   - **Touches:** `src/netmix/channelownership.h/.cpp`, `src/test/netmixownership_test.cpp`
   - **Success:** Scripted simultaneous-claim scenario converges to single owner on both simulated peers — no clobber, no deadlock.
@@ -218,7 +218,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.5.3` Enforcement in capture and apply paths
+- [x] `1.5.3` Enforcement in capture and apply paths
   - **Goal:** ControlCapture drops (does not send) events for channels the local peer doesn't own; ControlApplier rejects incoming events for channels the remote peer doesn't own (defense in depth). Global controls (crossfader) treated as a channel-like resource with its own owner slot. Local UI attempts on peer-owned channels are reverted via applier (value snaps back) and counted for a UI hint.
   - **Touches:** `src/netmix/controlcapture.cpp`, `src/netmix/controlapplier.cpp`, `src/netmix/channelownership.h/.cpp`, `src/test/netmixownership_test.cpp`
   - **Success:** End-to-end loopback: peer-owned channel ignores local wiggle, applies remote input; owned channel does the reverse.

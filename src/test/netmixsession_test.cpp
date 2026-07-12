@@ -10,6 +10,7 @@
 
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
+#include "netmix/channelownership.h"
 #include "netmix/netmixsessionmanager.h"
 #include "test/mixxxtest.h"
 
@@ -185,6 +186,86 @@ TEST_F(NetmixSessionTest, Loopback_ControlEventDelivery) {
     // assertion alone does NOT prove network delivery.
     // The sentCount/receivedCount checks above provide that proof.
     EXPECT_DOUBLE_EQ(0.75, volumeCO.get());
+
+    teardownPair(mgrA, mgrB);
+}
+
+TEST_F(NetmixSessionTest, OwnershipLoopback_Preassigned) {
+    std::unique_ptr<NetmixSessionManager> mgrA, mgrB;
+    quint16 portA = 0;
+
+    ASSERT_TRUE(setupLoopbackPair(mgrA, mgrB, portA));
+
+    // After handshake, both session managers should have ChannelOwnership created
+    auto* ownershipA = mgrA->channelOwnership();
+    auto* ownershipB = mgrB->channelOwnership();
+    ASSERT_NE(nullptr, ownershipA);
+    ASSERT_NE(nullptr, ownershipB);
+
+    // With no pre-assignment configured, all channels should be Unowned
+    for (quint16 ch = 0; ch <= 4; ++ch) {
+        EXPECT_EQ(OwnershipState::Unowned, ownershipA->state(ch));
+        EXPECT_EQ(OwnershipState::Unowned, ownershipB->state(ch));
+    }
+
+    teardownPair(mgrA, mgrB);
+}
+
+TEST_F(NetmixSessionTest, OwnershipLoopback_ClaimGrant) {
+    std::unique_ptr<NetmixSessionManager> mgrA, mgrB;
+    quint16 portA = 0;
+
+    ASSERT_TRUE(setupLoopbackPair(mgrA, mgrB, portA));
+
+    auto* ownershipA = mgrA->channelOwnership();
+    auto* ownershipB = mgrB->channelOwnership();
+    ASSERT_NE(nullptr, ownershipA);
+    ASSERT_NE(nullptr, ownershipB);
+
+    // mgrA claims channel 1
+    EXPECT_TRUE(ownershipA->claim(1));
+    EXPECT_EQ(OwnershipState::PendingClaim, ownershipA->state(1));
+
+    // Process events so the claim message reaches mgrB
+    pumpEvents(500);
+
+    // mgrB should have auto-granted (since channel is unowned on mgrB)
+    // and sent a Grant back to mgrA
+    EXPECT_TRUE(ownershipB->isOwnedByRemote(1));
+
+    // Process events so the Grant reaches mgrA
+    pumpEvents(500);
+
+    // mgrA should now own the channel
+    EXPECT_TRUE(ownershipA->isOwnedByLocal(1));
+
+    teardownPair(mgrA, mgrB);
+}
+
+TEST_F(NetmixSessionTest, OwnershipLoopback_VetoedClaim) {
+    std::unique_ptr<NetmixSessionManager> mgrA, mgrB;
+    quint16 portA = 0;
+
+    ASSERT_TRUE(setupLoopbackPair(mgrA, mgrB, portA));
+
+    auto* ownershipA = mgrA->channelOwnership();
+    auto* ownershipB = mgrB->channelOwnership();
+    ASSERT_NE(nullptr, ownershipA);
+    ASSERT_NE(nullptr, ownershipB);
+
+    // mgrA claims channel 1
+    EXPECT_TRUE(ownershipA->claim(1));
+    pumpEvents(500);
+
+    // mgrB auto-grants, mgrA receives Grant
+    pumpEvents(500);
+    EXPECT_TRUE(ownershipA->isOwnedByLocal(1));
+
+    // mgrB tries to claim channel 1 — already owned by mgrA
+    EXPECT_FALSE(ownershipB->claim(1));
+
+    // mgrA's claim on already-owned channel should also fail
+    EXPECT_FALSE(ownershipA->claim(1));
 
     teardownPair(mgrA, mgrB);
 }

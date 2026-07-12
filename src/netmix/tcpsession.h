@@ -53,6 +53,10 @@ class TcpSession : public QObject {
     quint16 localUdpPort() const;
     quint16 remoteUdpPort() const;
 
+    // Pre-assigned channels
+    void setPreassignedChannels(const QVector<quint16>& channels);
+    const QVector<quint16>& preassignedChannels() const;
+
     // Test helpers
     QTcpServer* server() const;
     void injectReceivedData(const QByteArray& data);
@@ -63,6 +67,7 @@ class TcpSession : public QObject {
     void peerDisconnected();
     void helloReceived(quint16 udpPort, QString peerName);
     void helloAckReceived(quint32 initiatorTick);
+    void helloComplete(quint8 peerId, const QVector<quint16>& remotePreassigned);
 
   private slots:
     void onNewConnection();
@@ -102,6 +107,10 @@ class TcpSession : public QObject {
     // UDP port plumbing
     quint16 m_localUdpPort = 0;
     quint16 m_remoteUdpPort = 0;
+
+    // Pre-assigned channels
+    QVector<quint16> m_preassignedChannels;
+    QVector<quint16> m_remotePreassignedChannels;
 
     // State
     State m_state = Disconnected;

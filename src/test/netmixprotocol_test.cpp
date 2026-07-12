@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <QIODevice>
 #include <QtDebug>
 #include <QVector>
 
@@ -19,6 +20,7 @@ TEST_F(NetmixProtocolTest, RoundTrip_Hello) {
     payload.peerName = QStringLiteral("alice");
     payload.tickRate = 480;
     payload.rollbackWindow = 16;
+    payload.preassignedChannels = {1, 2};
 
     NetmixMessage msg{NetmixMessageType::Hello, payload};
     QByteArray wire = encodeMessage(msg);
@@ -32,6 +34,7 @@ TEST_F(NetmixProtocolTest, RoundTrip_Hello) {
     EXPECT_EQ(QStringLiteral("alice"), p->peerName);
     EXPECT_EQ(480, p->tickRate);
     EXPECT_EQ(16, p->rollbackWindow);
+    EXPECT_EQ(QVector<quint16>({1, 2}), p->preassignedChannels);
 }
 
 TEST_F(NetmixProtocolTest, RoundTrip_HelloAck) {
@@ -41,6 +44,7 @@ TEST_F(NetmixProtocolTest, RoundTrip_HelloAck) {
     payload.peerId = 7;
     payload.tickRate = 240;
     payload.rollbackWindow = 8;
+    payload.preassignedChannels = {3, 4};
 
     NetmixMessage msg{NetmixMessageType::HelloAck, payload};
     auto decoded = decodeMessage(encodeMessage(msg));
@@ -54,6 +58,7 @@ TEST_F(NetmixProtocolTest, RoundTrip_HelloAck) {
     EXPECT_EQ(7, p->peerId);
     EXPECT_EQ(240, p->tickRate);
     EXPECT_EQ(8, p->rollbackWindow);
+    EXPECT_EQ(QVector<quint16>({3, 4}), p->preassignedChannels);
 }
 
 TEST_F(NetmixProtocolTest, RoundTrip_Ping) {
@@ -346,6 +351,45 @@ TEST_F(NetmixProtocolTest, UnknownType_ReturnsNullopt) {
     wire[6] = 0xFF;
     wire[7] = 0x00;
 
+    auto decoded = decodeMessage(wire);
+    EXPECT_FALSE(decoded.has_value());
+}
+
+// ---------------------------------------------------------------------------
+// Version backward compatibility — version 3 payload rejected by version 4 decoder
+// ---------------------------------------------------------------------------
+
+TEST_F(NetmixProtocolTest, OldVersion3_Hello_RejectedByV4) {
+    // Build a raw version-3 Hello (no preassignedChannels field) with version=3
+    NetmixProtocolHeader hdr;
+    hdr.version = 3;
+    hdr.type = static_cast<quint16>(NetmixMessageType::Hello);
+
+    QByteArray payload;
+    {
+        QDataStream s(&payload, QIODevice::WriteOnly);
+        s.setByteOrder(QDataStream::LittleEndian);
+        s.setVersion(QDataStream::Qt_6_0);
+        s << quint16(3);               // peerProtocolVersion
+        s << QStringLiteral("alice");   // peerName
+        s << quint16(240);              // tickRate
+        s << quint16(8);               // rollbackWindow
+        s << quint16(0);               // udpPort
+        // No preassignedChannels — version 3 format
+    }
+
+    hdr.length = payload.size();
+
+    QByteArray wire;
+    {
+        QDataStream s(&wire, QIODevice::WriteOnly);
+        s.setByteOrder(QDataStream::LittleEndian);
+        s.setVersion(QDataStream::Qt_6_0);
+        s << hdr;
+        s.writeRawData(payload.constData(), payload.size());
+    }
+
+    // This should be rejected — current version is 4, not 3
     auto decoded = decodeMessage(wire);
     EXPECT_FALSE(decoded.has_value());
 }

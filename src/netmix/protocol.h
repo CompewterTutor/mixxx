@@ -8,7 +8,7 @@
 #include <variant>
 
 constexpr quint32 kNetmixMagic = 0x584D4E;
-constexpr quint16 kNetmixProtocolVersion = 3;
+constexpr quint16 kNetmixProtocolVersion = 4;
 
 enum class NetmixMessageType : quint16 {
     Hello = 0,
@@ -47,6 +47,7 @@ struct NetmixHello {
     quint16 tickRate = 240;
     quint16 rollbackWindow = 8;
     quint16 udpPort = 0;
+    QVector<quint16> preassignedChannels;
 };
 
 QDataStream& operator<<(QDataStream& stream, const NetmixHello& msg);
@@ -59,6 +60,7 @@ struct NetmixHelloAck {
     quint16 tickRate = 240;
     quint16 rollbackWindow = 8;
     quint32 initiatorTick = 0;
+    QVector<quint16> preassignedChannels;
 };
 
 QDataStream& operator<<(QDataStream& stream, const NetmixHelloAck& msg);
