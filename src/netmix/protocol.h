@@ -35,12 +35,17 @@ struct NetmixProtocolHeader {
     quint32 length = 0;
 };
 
+static_assert(sizeof(NetmixProtocolHeader) == 12,
+        "NetmixProtocolHeader must be exactly 12 bytes (no padding)");
+
 QDataStream& operator<<(QDataStream& stream, const NetmixProtocolHeader& header);
 QDataStream& operator>>(QDataStream& stream, NetmixProtocolHeader& header);
 
 struct NetmixHello {
     quint16 peerProtocolVersion = kNetmixProtocolVersion;
     QString peerName;
+    quint16 tickRate = 240;
+    quint16 rollbackWindow = 8;
 };
 
 QDataStream& operator<<(QDataStream& stream, const NetmixHello& msg);
@@ -50,6 +55,8 @@ struct NetmixHelloAck {
     quint16 peerProtocolVersion = kNetmixProtocolVersion;
     QString peerName;
     quint8 peerId = 0;
+    quint16 tickRate = 240;
+    quint16 rollbackWindow = 8;
 };
 
 QDataStream& operator<<(QDataStream& stream, const NetmixHelloAck& msg);

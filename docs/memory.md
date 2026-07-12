@@ -77,6 +77,19 @@
 | Ramp supersession | A new `apply()` or `applyRamped()` on the same wireId cancels the in-flight ramp. Previous ramp entry marked `remainingTicks=0` (in `apply`) or superseded start value (in `applyRamped`). |
 | Seek routing | `ControlKind::Seek` applies directly (`proxy->set()`) even if `applyRamped` is called — no ramp for seek controls. |
 
+## 2026-07-12: TcpSession Channel (Task 1.3.1)
+
+| Decision | Value |
+|---|---|
+| Default listen port | 21200 |
+| PeerId assignment | Host=0, Client=1 (host assigns in HelloAck). Both sides hardcode their role-based peerId; HelloAck carries peerId as confirmation. |
+| Hello/HelloAck wire format | Extended with `tickRate` (quint16) and `rollbackWindow` (quint16) after existing fields. Old peers decode shorter payload → `atEnd()` check fails → rejected cleanly (version mismatch). |
+| Heartbeat | `Ping` sent every 1 s via `QTimer`. Dead-peer: no traffic 5 s → Degraded, 15 s → Disconnected. Timeouts overridable via `setTimeoutsForTest()` for tests. |
+| Framing | Length-prefixed: read 12-byte header, peek version for early reject, accumulate `12 + header.length` bytes, decode. Decode failure → send Bye + disconnect. |
+| Thread safety | All I/O in Qt event loop thread (main thread). No audio thread involvement. |
+| Degraded→Connected recovery | Receiving any traffic while Degraded resets dead-peer timer and transitions back to Connected. |
+| TcpSession ownership | Parented to session manager (or test). Sockets/timers parented to TcpSession (`this`), auto-destroyed. |
+
 ## 2026-07-12: InputFrame Packer (Task 1.2.4)
 
 | Decision | Value |
