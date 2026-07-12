@@ -86,7 +86,11 @@ owned by `CoreServices` (created alongside `BroadcastManager`,
   A deck routes live sound only after **both** peers confirm the cached copy
   (readiness handshake). Load uses `Track::newTemporary(path)`
   (`src/track/track.h:42`) — no library DB dependency — then schedules
-  analysis so waveforms/beats appear.
+  analysis so waveforms/beats appear. Cue points, hotcues, and saved loops
+  are **not** re-derivable from analysis alone — the sender's
+  `Track::getCuePoints()` is serialized and applied via `setCuePoints()` on
+  the remote side before ready-gating, so `hotcue_X_activate` messages land
+  on the same positions on both decks.
 - **No audio on the wire** in v1. Voice chat (v2) will reuse the
   `EngineMicrophone` capture path (`src/engine/channels/enginemicrophone.h`)
   with an Opus encoder, modeled on `ShoutConnection`'s sidechain pattern.
