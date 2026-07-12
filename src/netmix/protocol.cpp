@@ -62,6 +62,7 @@ QDataStream& operator<<(QDataStream& stream, const NetmixHelloAck& msg) {
     stream << msg.peerId;
     stream << msg.tickRate;
     stream << msg.rollbackWindow;
+    stream << msg.initiatorTick;
     return stream;
 }
 
@@ -71,6 +72,7 @@ QDataStream& operator>>(QDataStream& stream, NetmixHelloAck& msg) {
     stream >> msg.peerId;
     stream >> msg.tickRate;
     stream >> msg.rollbackWindow;
+    stream >> msg.initiatorTick;
     return stream;
 }
 

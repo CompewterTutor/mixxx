@@ -99,6 +99,22 @@
 | Port sharing | UDP listens on same port as TCP (default 21200). OS permits UDP + TCP on same port. |
 | Stats | `sent`, `received`, `dropped` (duplicate+stale+decode), `outOfOrder` (reordered within window). |
 
+## 2026-07-12: ClockSync NTP-lite Offset Estimation (Task 1.3.3)
+
+| Decision | Value |
+|---|---|
+| Ping/Pong transport | Dedicated UDP socket (separate from TCP heartbeat), port sharing with TCP (default 21200). Same datagram framing as UdpChannel (4-byte LE seq prefix). |
+| Ping interval | 250 ms (`kPingIntervalMs`). Pending pong guard prevents overlapping. |
+| Ping sends | `ClockSync::sendPingNow()` called by timer or test. Records `agreedTick()` as `m_lastSentTick`, uses `QElapsedTimer` for wall-clock RTT. |
+| NTP offset formula | `offset = pong.remoteTick - (m_lastSentTick + localTickNow) / 2` — standard NTP offset for symmetric RTT. All values are `quint32` agreedTick, cast to `qint32` for signed arithmetic (wraparound-safe via two's complement). |
+| Median filter | Sliding window of 16 `qint32` samples. Circular buffer with linear copy+sort for median extraction. `sorted[count/2]` (lower-median for even count). |
+| Filter update throttle | `SessionClock::setOffset` called every 4th pong (`kUpdateEveryNPongs=4`) with guard `abs(newOffset - currentOffset) > 1` to prevent micro-oscillation. |
+| RTT measurement | Wall-clock via `QElapsedTimer::nsecsElapsed() / 1000` (microsecond precision). Stored as `m_smoothedRttMs` (latest sample, not filtered). |
+| Test mode | `startTestMode()` skips UDP socket creation. All I/O via `injectMessage()` (incoming) and `outgoingMessage` signal (outgoing). Tests wire syncs together via signal→inject connections. |
+| HelloAck initiatorTick | `quint32 initiatorTick` appended to `NetmixHelloAck` wire format after `rollbackWindow`. Extends payload by 4 bytes. Old peers decoding shorter payload → `atEnd()` fails → version mismatch rejection (same pattern as tickRate/rollbackWindow extension). |
+| Session clock initial offset | `ClockSync::setInitialOffset(hostTick, localTick)` computes `offset = (qint32)hostTick - (qint32)localTick` and calls `m_pClock->setOffset()`. Called by session manager after handshake using HelloAck.initiatorTick. |
+| Outlier tolerance | Median filter rejects single extreme values (±500 ticks) within 2 ticks of stable value when window has ≥16 samples. |
+
 ## 2026-07-12: InputFrame Packer (Task 1.2.4)
 
 | Decision | Value |
