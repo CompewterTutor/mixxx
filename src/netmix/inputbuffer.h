@@ -25,6 +25,7 @@ class InputBuffer : public QObject {
     std::optional<quint32> firstDivergentTick() const;
 
     bool hasRemote(quint32 tick) const;
+    bool isRemoteConfirmed(quint32 tick) const;
     bool hasLocal(quint32 tick) const;
 
     NetmixInputFrame remoteFrameAt(quint32 tick) const;

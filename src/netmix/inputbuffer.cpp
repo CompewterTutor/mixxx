@@ -173,6 +173,12 @@ bool InputBuffer::hasRemote(quint32 tick) const {
     return slot.occupied && slot.tick == tick;
 }
 
+bool InputBuffer::isRemoteConfirmed(quint32 tick) const {
+    int idx = slotForTick(tick);
+    const RemoteTickSlot& slot = m_remoteRing[idx];
+    return slot.occupied && slot.tick == tick && slot.confirmed;
+}
+
 bool InputBuffer::hasLocal(quint32 tick) const {
     int idx = slotForTick(tick);
     const LocalTickSlot& slot = m_localRing[idx];

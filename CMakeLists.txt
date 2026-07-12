@@ -1537,6 +1537,7 @@ add_library(
   src/netmix/tcpsession.cpp
   src/netmix/udpchannel.cpp
   src/netmix/clocksync.cpp
+  src/netmix/prediction.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -2927,6 +2928,7 @@ if(BUILD_TESTING)
     src/test/netmixinputbuffer_test.cpp
     src/test/netmixclocksync_test.cpp
     src/test/netmixsession_test.cpp
+    src/test/netmixprediction_test.cpp
     src/test/fileinfo_test.cpp
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp
