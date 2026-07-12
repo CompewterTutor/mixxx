@@ -8,11 +8,13 @@
 #include "netmix/controlcapture.h"
 #include "netmix/inputframe.h"
 #include "netmix/protocol.h"
+#include "netmix/quantizer.h"
 #include "netmix/sessionclock.h"
 #include "netmix/tcpsession.h"
 #include "netmix/udpchannel.h"
 
 class ControlObject;
+class ControlProxy;
 
 class NetmixSessionManager : public QObject {
     Q_OBJECT
@@ -68,4 +70,7 @@ class NetmixSessionManager : public QObject {
     ControlCapture* m_pCapture = nullptr;
     ControlApplier* m_pApplier = nullptr;
     InputFramePacker* m_pPacker = nullptr;
+    NetmixQuantizer* m_pQuantizer = nullptr;
+    ControlObject* m_pQuantizeCO = nullptr;
+    ControlProxy* m_pBpmProxy = nullptr;
 };
