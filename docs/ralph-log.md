@@ -58,3 +58,7 @@ DONE: 1.4.1 merged into release/1.4.
 ## 2026-07-12 15:35
 
 DONE: 1.4.2 merged into release/1.4.
+
+## 2026-07-12 16:06
+
+DONE: 1.4.3 merged into release/1.4.

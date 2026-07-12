@@ -1,6 +1,7 @@
 #include "netmix/rollbackengine.h"
 
 #include <limits>
+#include <QSet>
 
 #include <QtGlobal>
 
@@ -51,9 +52,11 @@ void RollbackEngine::initialize() {
 
     m_entries = ControlAllowlist::entries();
     m_proxies.reserve(m_entries.size());
-    for (const auto& entry : m_entries) {
-        auto* proxy = new ControlProxy(entry.key, this);
+    m_wireToEntryIdx.clear();
+    for (int i = 0; i < m_entries.size(); ++i) {
+        auto* proxy = new ControlProxy(m_entries[i].key, this);
         m_proxies.append(proxy);
+        m_wireToEntryIdx.insert(m_entries[i].wireId, i);
     }
 
     takeSnapshot(0);
@@ -117,6 +120,7 @@ void RollbackEngine::onTick(quint32 tick) {
         return;
     }
 
+    m_pApplier->advanceTick();
     takeSnapshot(tick);
 
     auto divergent = m_pBuffer->firstDivergentTick();
@@ -199,11 +203,27 @@ void RollbackEngine::onTick(quint32 tick) {
 
     restoreSnapshot(*restoreSnap);
 
+    QSet<quint16> rampedWireIds;
+
     for (quint32 t = divTick; tickLe(t, tick); ++t) {
         if (m_pBuffer->isRemoteConfirmed(t)) {
             auto frame = m_pBuffer->remoteFrameAt(t);
             for (const auto& evt : frame.events) {
-                m_pApplier->apply(evt.wireId, evt.value);
+                auto kindOpt = ControlAllowlist::kindForWireId(evt.wireId);
+                if (kindOpt.has_value() && kindOpt.value() == ControlKind::Continuous) {
+                    double current = 0.0;
+                    auto idxIt = m_wireToEntryIdx.constFind(evt.wireId);
+                    if (idxIt != m_wireToEntryIdx.constEnd() &&
+                            idxIt.value() < m_proxies.size()) {
+                        current = m_proxies[idxIt.value()]->get();
+                    }
+                    int tickCount = rampTicksForCorrection(evt.value, current);
+                    m_pApplier->applyRamped(evt.wireId, evt.value, tickCount);
+                    rampedWireIds.insert(evt.wireId);
+                } else {
+                    m_pApplier->apply(evt.wireId, evt.value);
+                    rampedWireIds.remove(evt.wireId);
+                }
             }
         }
 
@@ -211,19 +231,28 @@ void RollbackEngine::onTick(quint32 tick) {
             auto frame = m_pBuffer->localFrameAt(t);
             for (const auto& evt : frame.events) {
                 m_pApplier->apply(evt.wireId, evt.value);
+                rampedWireIds.remove(evt.wireId);
             }
         }
 
         if (!m_pBuffer->isRemoteConfirmed(t) && m_pPrediction) {
             auto predicted = m_pPrediction->predict(t, *m_pBuffer);
             for (const auto& evt : predicted.events) {
-                m_pApplier->apply(evt.wireId, evt.value);
+                if (!rampedWireIds.contains(evt.wireId)) {
+                    m_pApplier->apply(evt.wireId, evt.value);
+                }
             }
         }
     }
 
     emit rollbackPerformed(restoreSnap->tick, tick);
     m_lastHandledDivTick = tick;
+}
+
+int RollbackEngine::rampTicksForCorrection(double target, double current) const {
+    double delta = qAbs(target - current);
+    int ticks = static_cast<int>(delta * kRampScale);
+    return qBound(1, ticks, kMaxRampTicks);
 }
 
 #include "moc_rollbackengine.cpp"

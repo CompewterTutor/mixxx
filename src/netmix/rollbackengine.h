@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QHash>
 #include <QObject>
 #include <QVector>
 
@@ -15,6 +16,8 @@ class RollbackEngine : public QObject {
   public:
     static constexpr int kDefaultWindow = 8;
     static constexpr int kMaxWindow = 30;
+    static constexpr double kRampScale = 4.0;
+    static constexpr int kMaxRampTicks = 4;
 
     explicit RollbackEngine(QObject* parent = nullptr);
     ~RollbackEngine() override;
@@ -46,6 +49,7 @@ class RollbackEngine : public QObject {
     int snapshotSlotForTick(quint32 tick) const;
     void takeSnapshot(quint32 tick);
     void restoreSnapshot(const Snapshot& snap);
+    int rampTicksForCorrection(double target, double current) const;
 
     int m_windowSize = kDefaultWindow;
     QVector<Snapshot> m_snapshots;
@@ -59,6 +63,7 @@ class RollbackEngine : public QObject {
 
     QVector<ControlProxy*> m_proxies;
     QVector<AllowlistEntry> m_entries;
+    QHash<quint16, int> m_wireToEntryIdx;
 
     int m_rollbackCount = 0;
     int m_windowExceededCount = 0;

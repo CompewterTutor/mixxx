@@ -177,6 +177,18 @@
 | Stats | `rollbackCount()` and `windowExceededCount()` exposed for monitoring. |
 | Signals | `rollbackPerformed(quint32 fromTick, quint32 toTick)` and `windowExceeded(quint32 tick)` for session manager / UI monitoring. |
 
+## 2026-07-12: Interpolation Reconciliation (Task 1.4.4)
+
+| Decision | Value |
+|---|---|
+| Ramp constants | `kRampScale=4.0`, `kMaxRampTicks=4`. Ramp duration = `qBound(1, int(|target-current| * 4.0), 4)` ticks. A 0.25 correction ramps 1 tick (~4ms at 240Hz), a 1.0 correction ramps 4 ticks (~17ms). |
+| `advanceTick` in `onTick` | `m_pApplier->advanceTick()` called at `onTick` entry, before `takeSnapshot`. Ramps progress one tick per engine tick. |
+| Re-simulation ramp | Confirmed remote Continuous events during re-sim go through `applyRamped` instead of `apply`. Discrete/Seek still use `apply` (snap). |
+| Corrected wireId set | `QSet<quint16> rampedWireIds` tracked during re-sim. Predicted events for wireIds in this set are skipped. Local events on ramped wireIds `apply()` (snap cancelling the ramp) and remove from the set. |
+| Ramp supersession | Newer confirmed correction on same wireId calls `applyRamped` again (ControlApplier supersedes in-flight ramp). Local input on same wireId calls `apply` (snap, ramp cancelled). |
+| Window-exceeded path | No ramp — forward correction still uses `apply()` (snap). Acceptable — late-arriving packets outside window are rare. |
+| Existing tests | Updated to expect ramp baseline (0.0) after rollback instead of immediate snap value. New ramp-specific tests added. |
+
 ## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
 
 | Decision | Value |
