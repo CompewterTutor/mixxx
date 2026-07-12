@@ -106,7 +106,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.3 — Transport: TCP Session + UDP Input + Clock Sync
 
-- [ ] `1.3.1` TCP session channel — listen, connect, handshake, heartbeat
+- [x] `1.3.1` TCP session channel — listen, connect, handshake, heartbeat
   - **Goal:** `src/netmix/tcpsession.h/.cpp`: QTcpServer listen on configurable port (default 21200); QTcpSocket connect to peer IP/port. Hello/HelloAck handshake carries protocol version + peer display name + session parameters (tick rate, rollback window); version mismatch → clean reject. Length-prefixed framing over the socket using protocol.h codecs. Heartbeat + dead-peer detection (no traffic 5 s → Degraded, 15 s → Disconnected). All in Qt event loop thread — never the audio thread.
   - **Touches:** `src/netmix/tcpsession.h`, `src/netmix/tcpsession.cpp`, `CMakeLists.txt`, `src/test/netmixtcpsession_test.cpp`
   - **Success:** Two in-process instances (loopback) complete handshake and exchange messages; version mismatch rejected; teardown clean.
@@ -114,7 +114,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.3.2` UDP input channel — datagram send/recv with sequencing
+- [x] `1.3.2` UDP input channel — datagram send/recv with sequencing
   - **Goal:** `src/netmix/udpchannel.h/.cpp`: QUdpSocket bound alongside the TCP port; sends InputFrame batches (from 1.2.4) with monotonically increasing sequence numbers; receiver drops duplicates/stale-older-than-window, tolerates reordering. Stats counters (sent, received, dropped, out-of-order) exposed for UI/diagnostics.
   - **Touches:** `src/netmix/udpchannel.h`, `src/netmix/udpchannel.cpp`, `CMakeLists.txt`, `src/test/netmixudpchannel_test.cpp`
   - **Success:** Loopback pair exchanges frames; artificially reordered/duplicated datagrams handled per spec; stats accurate.
@@ -122,7 +122,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.3.3` Clock synchronization — NTP-lite offset estimation
+- [x] `1.3.3` Clock synchronization — NTP-lite offset estimation
   - **Goal:** `src/netmix/clocksync.h/.cpp`: periodic Ping/Pong over UDP measuring RTT and peer tick offset; sliding median filter (window 16) feeds `SessionClock::setOffset`. Session start: initiator proposes tick 0 epoch in HelloAck; both clocks converge within ±1 tick under symmetric latency. Exposes smoothed RTT for UI.
   - **Touches:** `src/netmix/clocksync.h`, `src/netmix/clocksync.cpp`, `src/netmix/protocol.h/.cpp` (Ping/Pong payloads), `CMakeLists.txt`, `src/test/netmixclocksync_test.cpp`
   - **Success:** Simulated latency/jitter scenarios converge to correct offset; asymmetric spike outliers filtered by median.
@@ -130,7 +130,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.3.4` Session state machine wired into NetmixSessionManager
+- [x] `1.3.4` Session state machine wired into NetmixSessionManager
   - **Goal:** Compose 1.3.1–1.3.3 into `NetmixSessionManager`: `hostSession(port)` / `joinSession(ip, port)` / `leaveSession()`; state transitions Idle→Connecting→Connected→Degraded→Idle drive signals and the status CO; capture→pack→UDP send and UDP recv→(buffer for phase 1.4) plumbing connected end to end behind a `#ifdef`-free runtime flag.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/test/netmixsession_test.cpp`, `CMakeLists.txt`
   - **Success:** Loopback end-to-end: control change on instance A arrives as decoded InputFrame on instance B.

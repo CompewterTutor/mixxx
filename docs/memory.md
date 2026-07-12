@@ -77,6 +77,44 @@
 | Ramp supersession | A new `apply()` or `applyRamped()` on the same wireId cancels the in-flight ramp. Previous ramp entry marked `remainingTicks=0` (in `apply`) or superseded start value (in `applyRamped`). |
 | Seek routing | `ControlKind::Seek` applies directly (`proxy->set()`) even if `applyRamped` is called — no ramp for seek controls. |
 
+## 2026-07-12: TcpSession Channel (Task 1.3.1)
+
+| Decision | Value |
+|---|---|
+| Default listen port | 21200 |
+| PeerId assignment | Host=0, Client=1 (host assigns in HelloAck). Both sides hardcode their role-based peerId; HelloAck carries peerId as confirmation. |
+| Hello/HelloAck wire format | Extended with `tickRate` (quint16) and `rollbackWindow` (quint16) after existing fields. Old peers decode shorter payload → `atEnd()` check fails → rejected cleanly (version mismatch). |
+| Heartbeat | `Ping` sent every 1 s via `QTimer`. Dead-peer: no traffic 5 s → Degraded, 15 s → Disconnected. Timeouts overridable via `setTimeoutsForTest()` for tests. |
+| Framing | Length-prefixed: read 12-byte header, peek version for early reject, accumulate `12 + header.length` bytes, decode. Decode failure → send Bye + disconnect. |
+| Thread safety | All I/O in Qt event loop thread (main thread). No audio thread involvement. |
+| Degraded→Connected recovery | Receiving any traffic while Degraded resets dead-peer timer and transitions back to Connected. |
+| TcpSession ownership | Parented to session manager (or test). Sockets/timers parented to TcpSession (`this`), auto-destroyed. |
+
+## 2026-07-12: UDP Input Channel (Task 1.3.2)
+
+| Decision | Value |
+|---|---|
+| UDP datagram format | `[quint32 seq][encodeMessage(InputFrame)]` — seq is network-local monotonic counter, not the session tick. Decode rest via standard `decodeMessage`. |
+| Window size | 64 sequence numbers (`kWindowSize=64`). Stale: `seq <= highest - kWindowSize`. |
+| Port sharing | UDP listens on same port as TCP (default 21200). OS permits UDP + TCP on same port. |
+| Stats | `sent`, `received`, `dropped` (duplicate+stale+decode), `outOfOrder` (reordered within window). |
+
+## 2026-07-12: ClockSync NTP-lite Offset Estimation (Task 1.3.3)
+
+| Decision | Value |
+|---|---|
+| Ping/Pong transport | Dedicated UDP socket (separate from TCP heartbeat), port sharing with TCP (default 21200). Same datagram framing as UdpChannel (4-byte LE seq prefix). |
+| Ping interval | 250 ms (`kPingIntervalMs`). Pending pong guard prevents overlapping. |
+| Ping sends | `ClockSync::sendPingNow()` called by timer or test. Records `agreedTick()` as `m_lastSentTick`, uses `QElapsedTimer` for wall-clock RTT. |
+| NTP offset formula | `offset = pong.remoteTick - (m_lastSentTick + localTickNow) / 2` — standard NTP offset for symmetric RTT. All values are `quint32` agreedTick, cast to `qint32` for signed arithmetic (wraparound-safe via two's complement). |
+| Median filter | Sliding window of 16 `qint32` samples. Circular buffer with linear copy+sort for median extraction. `sorted[count/2]` (lower-median for even count). |
+| Filter update throttle | `SessionClock::setOffset` called every 4th pong (`kUpdateEveryNPongs=4`) with guard `abs(newOffset - currentOffset) > 1` to prevent micro-oscillation. |
+| RTT measurement | Wall-clock via `QElapsedTimer::nsecsElapsed() / 1000` (microsecond precision). Stored as `m_smoothedRttMs` (latest sample, not filtered). |
+| Test mode | `startTestMode()` skips UDP socket creation. All I/O via `injectMessage()` (incoming) and `outgoingMessage` signal (outgoing). Tests wire syncs together via signal→inject connections. |
+| HelloAck initiatorTick | `quint32 initiatorTick` appended to `NetmixHelloAck` wire format after `rollbackWindow`. Extends payload by 4 bytes. Old peers decoding shorter payload → `atEnd()` fails → version mismatch rejection (same pattern as tickRate/rollbackWindow extension). |
+| Session clock initial offset | `ClockSync::setInitialOffset(hostTick, localTick)` computes `offset = (qint32)hostTick - (qint32)localTick` and calls `m_pClock->setOffset()`. Called by session manager after handshake using HelloAck.initiatorTick. |
+| Outlier tolerance | Median filter rejects single extreme values (±500 ticks) within 2 ticks of stable value when window has ≥16 samples. |
+
 ## 2026-07-12: InputFrame Packer (Task 1.2.4)
 
 | Decision | Value |
@@ -86,3 +124,13 @@
 | framesForSend | Returns up to `batchSize` most recently finalized frames, newest first. Walks ring buffer backward.|
 | Size guard | 4 ticks × 20 events each → total encoded batch under 1200 bytes (test-enforced). |
 | Clear | Resets all slots and head index. |
+
+## 2026-07-12: Session State Machine Wired (Task 1.3.4)
+
+| Decision | Value |
+|---|---|
+| ClockSync deferred from 1.3.4 | ClockSync::start fails on macOS when binding same UDP port as UdpChannel (`SO_REUSEPORT` not exposed by Qt). ClockSync creation removed from `NetmixSessionManager::onTcpConnected`. Will be re-added in phase 1.4/1.5 when port-sharing solution is implemented (single shared socket or platform-specific `SO_REUSEPORT`). |
+| Sub-component deletion | Use `deleteLater()` + immediate pointer nulling + `disconnect(this)` before deletion to avoid recursion through signal emission (e.g., TcpSession emits `stateChanged(Disconnected)` → manager deletes TcpSession while still inside its `setState` stack frame). |
+| Protocol version bumped | `kNetmixProtocolVersion` = 3 for `udpPort` field in `NetmixHello`. |
+| `udpPort` in Hello | Both peers advertise their UDP listener port in `NetmixHello.udpPort`. Host uses this to learn client's UDP port (which is auto-assigned). Client assumes host's UDP port == host's TCP port (both listen on same port). |
+| Runtime gate | `setEnabled(bool)` flag (no `#ifdef`). When disabled, `hostSession`/`joinSession` return immediately without changing state. |

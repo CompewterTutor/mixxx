@@ -65,7 +65,7 @@ void ControlCapture::stop() {
 }
 
 void ControlCapture::onProxyValueChange(quint16 wireId, double value) {
-    if (!m_pClock) {
+    if (m_muted || !m_pClock) {
         return;
     }
     const quint32 tick = m_pClock->agreedTick();
