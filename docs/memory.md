@@ -90,6 +90,15 @@
 | Degraded→Connected recovery | Receiving any traffic while Degraded resets dead-peer timer and transitions back to Connected. |
 | TcpSession ownership | Parented to session manager (or test). Sockets/timers parented to TcpSession (`this`), auto-destroyed. |
 
+## 2026-07-12: UDP Input Channel (Task 1.3.2)
+
+| Decision | Value |
+|---|---|
+| UDP datagram format | `[quint32 seq][encodeMessage(InputFrame)]` — seq is network-local monotonic counter, not the session tick. Decode rest via standard `decodeMessage`. |
+| Window size | 64 sequence numbers (`kWindowSize=64`). Stale: `seq <= highest - kWindowSize`. |
+| Port sharing | UDP listens on same port as TCP (default 21200). OS permits UDP + TCP on same port. |
+| Stats | `sent`, `received`, `dropped` (duplicate+stale+decode), `outOfOrder` (reordered within window). |
+
 ## 2026-07-12: InputFrame Packer (Task 1.2.4)
 
 | Decision | Value |
