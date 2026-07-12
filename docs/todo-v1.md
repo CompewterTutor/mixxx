@@ -42,7 +42,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.1.4` NetmixSessionManager service owned by CoreServices
+- [x] `1.1.4` NetmixSessionManager service owned by CoreServices
   - **Goal:** Flesh `NetmixSessionManager` into the long-lived service: constructed in `CoreServices` (near `BroadcastManager`, `src/coreservices.cpp`), owns SessionClock, exposes session state enum (Idle/Connecting/Connected/Degraded) as signals + a `[Netmix],status` ControlObject. No networking yet.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/coreservices.h`, `src/coreservices.cpp`, `CMakeLists.txt`
   - **Success:** Mixxx starts and shuts down cleanly with the service instantiated; status CO readable.

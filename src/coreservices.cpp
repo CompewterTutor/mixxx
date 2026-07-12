@@ -11,6 +11,7 @@
 #ifdef __BROADCAST__
 #include "broadcast/broadcastmanager.h"
 #endif
+#include "netmix/netmixsessionmanager.h"
 #include "control/controlindicatortimer.h"
 #include "controllers/controllermanager.h"
 #include "controllers/keyboard/keyboardeventfilter.h"
@@ -551,6 +552,8 @@ void CoreServices::initialize(QApplication* pApp) {
 
     m_pRecordingManager = std::make_shared<RecordingManager>(pConfig, m_pEngine.get());
 
+    m_pNetmixSessionManager = std::make_shared<NetmixSessionManager>();
+
 #ifdef __BROADCAST__
     m_pBroadcastManager = std::make_shared<BroadcastManager>(
             m_pSettingsManager.get(),
@@ -966,6 +969,9 @@ void CoreServices::finalize() {
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting BroadcastManager";
     CLEAR_AND_CHECK_DELETED(m_pBroadcastManager);
 #endif
+
+    qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting NetmixSessionManager";
+    CLEAR_AND_CHECK_DELETED(m_pNetmixSessionManager);
 
     // EngineMixer depends on Config and m_pEffectsManager.
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting EngineMixer";

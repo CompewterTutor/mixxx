@@ -2909,6 +2909,7 @@ if(BUILD_TESTING)
     src/test/enginesynctest.cpp
     src/test/netmixprotocol_test.cpp
     src/test/netmixsessionclock_test.cpp
+    src/test/netmixsessionmanager_test.cpp
     src/test/fileinfo_test.cpp
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp

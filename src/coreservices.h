@@ -17,6 +17,7 @@ class RecordingManager;
 class BroadcastManager;
 #endif
 class ControllerManager;
+class NetmixSessionManager;
 class VinylControlManager;
 class TrackCollectionManager;
 class Library;
@@ -67,6 +68,10 @@ class CoreServices : public QObject {
         return m_pBroadcastManager;
     }
 #endif
+
+    std::shared_ptr<NetmixSessionManager> getNetmixSessionManager() const {
+        return m_pNetmixSessionManager;
+    }
 
     std::shared_ptr<ControllerManager> getControllerManager() const {
         return m_pControllerManager;
@@ -130,6 +135,7 @@ class CoreServices : public QObject {
     std::shared_ptr<BroadcastManager> m_pBroadcastManager;
 #endif
     std::shared_ptr<ControllerManager> m_pControllerManager;
+    std::shared_ptr<NetmixSessionManager> m_pNetmixSessionManager;
 
     std::shared_ptr<VinylControlManager> m_pVCManager;
 
