@@ -254,7 +254,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.6.3` Queue-triggered background send + readiness handshake
+- [x] `1.6.3` Queue-triggered background send + readiness handshake
   - **Goal:** Wire into deck loading: when a track is loaded/queued on a session deck the local peer owns (hook `PlayerManager`/`BaseTrackPlayer` `loadingTrack` signal, `src/mixer/basetrackplayer.h:70`), NetmixSessionManager hashes the file, offers it, and starts background transfer if the remote cache lacks it. When remote confirms verified cache entry it sends TrackReady; both-ready state tracked per deck.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/netmix/trackcache.cpp`, `src/test/netmixsession_test.cpp`
   - **Success:** Loopback: loading a track on owned deck ends with remote cache containing verified copy + both-ready flag set.
