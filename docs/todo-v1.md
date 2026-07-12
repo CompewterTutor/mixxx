@@ -18,7 +18,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.1 — Scaffold, Protocol, Session Clock
 
-- [ ] `1.1.1` Create `src/netmix/` module skeleton and CMake wiring
+- [x] `1.1.1` Create `src/netmix/` module skeleton and CMake wiring
   - **Goal:** New directory `src/netmix/` with `netmixsessionmanager.h/.cpp` stub class (QObject, no logic), registered in root `CMakeLists.txt` alongside the other library sources. Builds clean.
   - **Touches:** `src/netmix/netmixsessionmanager.h`, `src/netmix/netmixsessionmanager.cpp`, `CMakeLists.txt`
   - **Success:** `cmake --build build --target mixxx-test` succeeds with the new files compiled.
@@ -26,7 +26,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Low
   - **Model:** Standard
 
-- [ ] `1.1.2` Protocol message definitions and serialization
+- [x] `1.1.2` Protocol message definitions and serialization
   - **Goal:** `src/netmix/protocol.h/.cpp`: versioned wire protocol. Message enum (Hello, HelloAck, Ping, Pong, InputFrame, OwnershipClaim, OwnershipGrant, OwnershipDeny, OwnershipRelease, TrackOffer, TrackAccept, TrackChunk, TrackComplete, TrackReady, Bye), fixed little-endian header {magic, version, type, length}, QDataStream-based encode/decode helpers returning std::optional on malformed input. No sockets yet.
   - **Touches:** `src/netmix/protocol.h`, `src/netmix/protocol.cpp`, `CMakeLists.txt`, `src/test/netmixprotocol_test.cpp`
   - **Success:** Round-trip encode/decode for every message type; decode rejects bad magic, bad version, truncated payloads without crashing.
@@ -34,7 +34,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.1.3` SessionClock — fixed-rate tick from engine frame time
+- [x] `1.1.3` SessionClock — fixed-rate tick from engine frame time
   - **Goal:** `src/netmix/sessionclock.h/.cpp`: converts accumulated audio frames (fed via `onFramesProcessed(int frames, int sampleRate)`) into a monotonically increasing 240 Hz tick counter. Pure logic, no Qt timers, no wall clock. Supports an offset (set by later clock-sync task) so both peers agree on absolute tick numbers.
   - **Touches:** `src/netmix/sessionclock.h`, `src/netmix/sessionclock.cpp`, `CMakeLists.txt`, `src/test/netmixsessionclock_test.cpp`
   - **Success:** Deterministic: identical frame-feed sequences yield identical tick sequences. Handles odd buffer sizes and sample-rate values without drift (rational accumulation, no float error growth).
@@ -42,7 +42,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.1.4` NetmixSessionManager service owned by CoreServices
+- [x] `1.1.4` NetmixSessionManager service owned by CoreServices
   - **Goal:** Flesh `NetmixSessionManager` into the long-lived service: constructed in `CoreServices` (near `BroadcastManager`, `src/coreservices.cpp`), owns SessionClock, exposes session state enum (Idle/Connecting/Connected/Degraded) as signals + a `[Netmix],status` ControlObject. No networking yet.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/coreservices.h`, `src/coreservices.cpp`, `CMakeLists.txt`
   - **Success:** Mixxx starts and shuts down cleanly with the service instantiated; status CO readable.
