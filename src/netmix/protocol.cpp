@@ -41,6 +41,7 @@ QDataStream& operator<<(QDataStream& stream, const NetmixHello& msg) {
     stream << msg.peerName;
     stream << msg.tickRate;
     stream << msg.rollbackWindow;
+    stream << msg.udpPort;
     return stream;
 }
 
@@ -49,6 +50,7 @@ QDataStream& operator>>(QDataStream& stream, NetmixHello& msg) {
     stream >> msg.peerName;
     stream >> msg.tickRate;
     stream >> msg.rollbackWindow;
+    stream >> msg.udpPort;
     return stream;
 }
 
