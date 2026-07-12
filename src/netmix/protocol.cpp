@@ -211,6 +211,7 @@ QDataStream& operator<<(QDataStream& stream, const NetmixTrackOffer& msg) {
     stream << msg.size;
     stream << msg.name;
     stream << msg.mime;
+    stream << msg.channelId;
     return stream;
 }
 
@@ -219,6 +220,7 @@ QDataStream& operator>>(QDataStream& stream, NetmixTrackOffer& msg) {
     stream >> msg.size;
     stream >> msg.name;
     stream >> msg.mime;
+    stream >> msg.channelId;
     return stream;
 }
 
@@ -281,6 +283,46 @@ QDataStream& operator<<(QDataStream& stream, const NetmixTrackReady& msg) {
 
 QDataStream& operator>>(QDataStream& stream, NetmixTrackReady& msg) {
     stream >> msg.hash;
+    return stream;
+}
+
+// ---------------------------------------------------------------------------
+// NetmixCueSnapshotEntry
+// ---------------------------------------------------------------------------
+
+QDataStream& operator<<(QDataStream& stream, const NetmixCueSnapshotEntry& entry) {
+    stream << entry.type;
+    stream << entry.hotcueIndex;
+    stream << entry.startPositionSamples;
+    stream << entry.endPositionSamples;
+    stream << entry.color;
+    stream << entry.label;
+    return stream;
+}
+
+QDataStream& operator>>(QDataStream& stream, NetmixCueSnapshotEntry& entry) {
+    stream >> entry.type;
+    stream >> entry.hotcueIndex;
+    stream >> entry.startPositionSamples;
+    stream >> entry.endPositionSamples;
+    stream >> entry.color;
+    stream >> entry.label;
+    return stream;
+}
+
+// ---------------------------------------------------------------------------
+// NetmixCueSnapshot
+// ---------------------------------------------------------------------------
+
+QDataStream& operator<<(QDataStream& stream, const NetmixCueSnapshot& msg) {
+    stream << msg.hash;
+    stream << msg.cues;
+    return stream;
+}
+
+QDataStream& operator>>(QDataStream& stream, NetmixCueSnapshot& msg) {
+    stream >> msg.hash;
+    stream >> msg.cues;
     return stream;
 }
 
@@ -464,6 +506,12 @@ std::optional<NetmixMessage> decodeMessage(const QByteArray& data) {
     }
     case NetmixMessageType::Bye: {
         NetmixBye p;
+        payloadStream >> p;
+        msg.payload = p;
+        break;
+    }
+    case NetmixMessageType::CueSnapshot: {
+        NetmixCueSnapshot p;
         payloadStream >> p;
         msg.payload = p;
         break;

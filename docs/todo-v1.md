@@ -238,7 +238,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.6 — Track Pre-Transfer & Remote Cache
 
-- [ ] `1.6.1` Remote track cache directory and index
+- [x] `1.6.1` Remote track cache directory and index
   - **Goal:** `src/netmix/trackcache.h/.cpp`: cache dir `<settingsdir>/netmix_cache/` (settings dir via `ConfigObject::getSettingsPath`, `src/preferences/configobject.cpp:209`); files stored as `<sha256>.<ext>`; JSON index file mapping hash → {original filename, size, source peer, added timestamp, verified flag}. Lookup, insert, verify (re-hash), evict APIs. Corrupt/missing index rebuilds from directory scan.
   - **Touches:** `src/netmix/trackcache.h`, `src/netmix/trackcache.cpp`, `CMakeLists.txt`, `src/test/netmixtrackcache_test.cpp`
   - **Success:** Insert/lookup/verify round-trip with temp dirs; index rebuild works; no writes outside cache dir (path traversal guarded).
@@ -246,7 +246,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.6.2` Chunked file transfer over TCP with verify + resume
+- [x] `1.6.2` Chunked file transfer over TCP with verify + resume
   - **Goal:** `src/netmix/tracktransfer.h/.cpp`: sender streams TrackOffer {hash, size, name, mime} → receiver TrackAccept {have-bytes for resume} → TrackChunk (64 KiB) sequence → TrackComplete; receiver writes to `<hash>.partial`, renames after full sha256 verify. Transfers run on the TCP session socket interleaved with control messages (chunk messages yield to pending control traffic — bounded queue). Progress signals for UI.
   - **Touches:** `src/netmix/tracktransfer.h`, `src/netmix/tracktransfer.cpp`, `src/netmix/protocol.h/.cpp`, `CMakeLists.txt`, `src/test/netmixtracktransfer_test.cpp`
   - **Success:** Loopback transfer of a multi-MB temp file verifies byte-identical; kill-and-reconnect resumes from partial; corrupted chunk fails verify and re-requests.
@@ -254,7 +254,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.6.3` Queue-triggered background send + readiness handshake
+- [x] `1.6.3` Queue-triggered background send + readiness handshake
   - **Goal:** Wire into deck loading: when a track is loaded/queued on a session deck the local peer owns (hook `PlayerManager`/`BaseTrackPlayer` `loadingTrack` signal, `src/mixer/basetrackplayer.h:70`), NetmixSessionManager hashes the file, offers it, and starts background transfer if the remote cache lacks it. When remote confirms verified cache entry it sends TrackReady; both-ready state tracked per deck.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/netmix/trackcache.cpp`, `src/test/netmixsession_test.cpp`
   - **Success:** Loopback: loading a track on owned deck ends with remote cache containing verified copy + both-ready flag set.
@@ -262,14 +262,14 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.6.4` Live-sound gating + remote deck load + analysis
+- [x] `1.6.4` Live-sound gating + remote deck load + analysis
   - **Goal:** A session deck may route live sound only when its track is both-ready: gate by holding the channel's netmix-ready CO and muting channel output via existing gain path until ready (no engine-callback changes — use channel volume/enable COs). Remote side auto-loads the cached file to the mirrored deck via `Track::newTemporary(path)` (`src/track/track.h:42`) through `PlayerManager::slotLoadTrackToPlayer`, then schedules analysis (`Library::analyzeTracks`) so beats/waveform populate.
   - **Touches:** `src/netmix/netmixsessionmanager.cpp`, `src/netmix/controlapplier.cpp`, `src/test/netmixsession_test.cpp`
   - **Success:** Deck stays silent until both-ready; remote deck ends up with the cached track loaded and analysis queued.
   - **Tests:** Extend `NetmixSessionTest` — gating + remote load; manual smoke documented in `docs/netmix-manual-test.md`.
   - **Difficulty:** High
 
-- [ ] `1.6.5` Cue point / hotcue / loop metadata transfer
+- [x] `1.6.5` Cue point / hotcue / loop metadata transfer
   - **Goal:** Local analysis alone does not reproduce the owning DJ's hotcues, main cue, intro/outro, or saved loops — `hotcue_X_activate` messages replicated over the wire (allowlist in `1.4.1`) are meaningless on the remote deck unless its `Track` has matching `CuePointer` entries at the same hotcue indices. Serialize the owning peer's `Track::getCuePoints()` (`src/track/track.h:342`, `Cue` fields: type, hotcue index, start/end sample position, color, label — `src/track/cue.h:15`) into a `CueSnapshot` sent alongside (or immediately after) the `TrackComplete` message from `1.6.2`. On receipt, apply via `Track::setCuePoints()` (`src/track/track.h:348`) before the deck is marked ready in `1.6.3`'s both-ready handshake — analysis-derived beatgrid/waveform still comes from local `Library::analyzeTracks`, but cue points are the sender's authoritative values, not re-derived.
   - **Touches:** `src/netmix/protocol.h/.cpp`, `src/netmix/tracktransfer.cpp`, `src/netmix/netmixsessionmanager.cpp`, `src/test/netmixtracktransfer_test.cpp`
   - **Success:** Loopback transfer carries hotcues/main cue/loops byte-for-byte (position + label + color); remote `Track::getCuePoints()` matches sender's before both-ready fires; a deck is never marked ready with stale/partial cue data.

@@ -239,3 +239,75 @@
 | Strategy interface | `PredictionStrategy` abstract base class with virtual `predict(tick, buffer)`. `HoldLastPrediction` is the initial implementation. Enables swapping to velocity-extrapolation or NN prediction without touching callers. |
 | Hold-last algorithm | For ticks with a confirmed remote frame: return it as-is. For ticks without: search backward up to `kDefaultCapacity` ticks, find the most recent confirmed frame, copy only `ControlKind::Continuous` events (volume/pregain/filter/crossfader). Discrete/seek events NOT carried forward — they fire once and don't hold. |
 | InputBuffer API extension | `isRemoteConfirmed(tick)` added to `InputBuffer` (was missing from 1.4.1). Returns true only if slot is occupied, tick matches, AND `confirmed` flag is set. Required by prediction to distinguish confirmed data from previously-predicted frames during re-simulation. Without this, re-prediction after a rollback would return stale predicted frames with outdated last-known values. |
+
+## 2026-07-12: TrackTransfer Chunked File Transfer (Task 1.6.2)
+
+| Decision | Value |
+|---|---|
+| TrackTransfer ownership | Takes `TcpSession*` and `TrackCache*` as non-owning pointers. Parented to session manager (or test). |
+| Signal routing | Connects to `TcpSession::messageReceived` in constructor. All track message types routed internally via switch. |
+| Partial file naming | `<hash>.<ext>.partial` inside cache dir. Extension derived from mime type via `mimeToExt()`. |
+| Verify-then-rename | After TrackComplete, receiver computes SHA-256 of .partial. Pass → rename to `<hash>.<ext>`, insert into TrackCache, send TrackReady. Fail → delete .partial, reset IncomingTransfer (keep map entry), send TrackAccept{hash, 0} to restart. |
+| Batch sender | Sends up to 4 chunks (64 KiB each) per `sendNextBatch()`. After each batch, if more data remains, schedules `QTimer::singleShot(0)` to yield event loop for pending control messages. |
+| Chunk read size | `kChunkSize = 65536` (64 KiB). |
+| Max chunks per batch | `kMaxChunksPerBatch = 4`. Bounded: at most 4 chunks pending at once. |
+| Resume | Outgoing: sender seeks to `haveBytes` from TrackAccept. Incoming: receiver opens .partial in Append mode, sets `bytesReceived = haveBytes`. Both sides agree on `haveBytes` as the first byte not yet received. |
+| Hash format | Protocol uses `QByteArray` (32 raw bytes). Cache uses `QString` (64 hex chars). Convert via `toHex()`/`fromHex()`. |
+| Cache insertion post-transfer | After verify and rename, calls `m_pCache->insert(finalPath)` which detects existing file (skips copy), adds entry to index. |
+| CancelAll | Closes all file handles, removes partial files, clears both transfer maps. |
+| No protocol changes | All six track message structs (TrackOffer, TrackAccept, TrackChunk, TrackComplete, TrackReady) existed from Task 1.1.2 with full serialization. |
+
+## 2026-07-12: Queue-Triggered Transfer & Readiness Handshake (Task 1.6.3)
+
+| Decision | Value |
+|---|---|
+| Entry point | `NetmixSessionManager::notifyTrackLoaded(channelId, filePath, name, mime)` — called externally (CoreServices/PlayerManager) when track loaded on a session deck |
+| Ownership gate | Transfer only starts if `isOwnedByLocal(channelId)`. Unowned decks skip transfer entirely. |
+| Hash for local tracks | `TrackCache::hashFile()` static method computes SHA-256 without inserting into local cache (local tracks not redundantly copied). |
+| Ready state vectors | `QVector<bool>(5, false)` per mgr — `m_localTrackLoaded[ch]` + `m_remoteReady[ch]` → `isDeckReady(ch)` only true when both set. |
+| Stale transfer detection | `m_currentHash[channelId]` tracked. If TrackReady arrives for a hash that doesn't match `m_currentHash[ch]` (deck loaded a new track mid-transfer), the stale complete is ignored. |
+| TrackTransfer creation | Lazy: created in `onTcpConnected()` only if `m_pTrackCache` was set via `setTrackCache()`. Raw (non-owning) pointer for cache. |
+| Teardown | TrackTransfer `deleteLater`'d in `deleteSubComponents()`. Vectors cleared. `m_pendingTransfers` cleared. |
+| Hash -> channelId map | `QHash<QString, quint16> m_pendingTransfers` tracks which deck each outgoing transfer belongs to. Used in `onTrackTransferComplete`/`onTrackTransferFailed` to route back to the right channel. |
+
+## 2026-07-12: TrackCache Directory & Index (Task 1.6.1)
+
+| Decision | Value |
+|---|---|
+| Cache dir name | `netmix_cache/` under settings dir |
+| Index file | `index.json`, version 1, JSON format: `{version, entries: {hash: {originalFilename, size, sourcePeer, addedTimestamp, verified}}}` |
+| Rebuild | Scan dir for files matching `64hexchars.ext`, trust filename as content hash, set verified=true |
+| Path safety | `isPathSafe` checks `QDir::cleanPath(candidate).startsWith(m_cacheDir.canonicalPath())`. Applied to all cache output paths. Source file paths in `insert()` not checked (external input, can be anywhere). |
+| File naming | `<sha256>.<ext>` inside cache dir |
+| SHA-256 | `QCryptographicHash::Sha256` |
+| Thread | Qt thread only, no locks |
+
+## 2026-07-12: Cue Point / Hotcue / Loop Metadata Transfer (Task 1.6.5)
+
+| Decision | Value |
+|---|---|
+| Wire type | `NetmixCueSnapshot` (type=15) sent after `TrackComplete` for a given hash (TCP ordering guarantee). Always sent, even when cue list is empty — receiver treats empty list as valid snapshot and proceeds. |
+| CueSnapshot positions | Serialized as engine sample positions (`double`, stereo frames × 2) via `toEngineSamplePosMaybeInvalid()` / `fromEngineSamplePosMaybeInvalid()`. Both peers have identical audio (SHA-256 verified), so frame↔sample conversion is deterministic. |
+| Color encoding | `quint32` (0x00RRGGBB). Always present in wire format. `0x000000` used for absent colors. `RgbColor(code_t)` constructor reconstructs on receiver. |
+| Receiver ready gating | `TrackReady` is NOT sent (and `trackReceived` NOT emitted) until BOTH the file (`TrackComplete`) and cue data (`CueSnapshot`) have arrived. Either may arrive first; the receiver stores the first-arriving component and waits for the second. |
+| Cue data flow | Sender: `notifyTrackLoaded` → `sendTrack()` + `sendCueSnapshot()` (buffered, sent after TrackComplete by `sendNextBatch`). Receiver: `TrackTransfer` defers TrackReady in `handleTrackComplete` if cues not yet available; `handleCueSnapshot` completes the handshake when both are present. |
+| Session manager integration | `cueSnapshotReceived` signal wired from `TrackTransfer` → `NetmixSessionManager::onCueSnapshotReceived` → stored in `m_pendingCueData[hash]`. Applied in `loadCachedTrack` via `Track::setCuePoints()` before the deck is marked ready. |
+| No protocol version bump | Adding message type 15 is backward-compatible — unknown types are rejected by existing `default: qWarning()` catch. |
+| No scope creep | Cue snapshot is point-to-point metadata. No engine-thread changes, audio over wire, or protocol version bumps. |
+
+## 2026-07-12: Live-Sound Gating + Remote Deck Load + Analysis (Task 1.6.4)
+
+| Decision | Value |
+|---|---|
+| Protocol version | Bumped to 5. `NetmixTrackOffer.channelId` added (quint16). Old v4 decoders reject v5 payloads via `atEnd()` check (shorter payload). |
+| Gating mechanism | `[ChannelN], mute` set to 1.0 (muted) until `isDeckReady()` true, restored to 0.0 at ready. Uses existing ControlProxy, no engine-callback changes. |
+| `[ChannelN], netmix_ready` CO | Read-only ControlObject created in ctor, reflects 0.0/1.0 via `forceSet`. Default 0.0. Not persisted. |
+| Mute proxy lifetime | `ControlProxy` instances parented to session manager (`this`), created in ctor, valid for entire manager lifetime. `set(0.0/1.0)` from Qt thread is safe (no audio callback involvement). |
+| Receiver-side track load | Uses `Track::newTemporary(filePath)` → `PlayerManager::slotLoadTrackToPlayer(pTrack, group, play=false)`. Requires PlayerManager* set via `setPlayerManager()` before session start. |
+| Analysis scheduling | `Library::analyzeTracks({AnalyzerScheduledTrack(trackId)})` called after track loaded. Temporary tracks have invalid TrackId — analysis skipped gracefully. |
+| Incoming hash→channelId map | `QHash<QString, quint16> m_incomingChannelMap` populated by intercepting TrackOffer in `onTcpMessageReceived` before TrackTransfer processes it. Consumed by `onTrackReceived` (cache-miss) or same `onTcpMessageReceived` handler (cache-hit). |
+| Signal ordering guarantee | Session manager connects to `TcpSession::messageReceived` BEFORE TrackTransfer (created inside `onTcpConnected`). TrackOffer is processed by session manager first, populating hash→channelId before TrackTransfer handles the offer. |
+| Cache-hit fast path | If cached file already exists, `onTcpMessageReceived` loads immediately via `loadCachedTrack()` without waiting for `trackReceived`. Removes hash from map inline. |
+| `loadCachedTrack` | Removes hash from map at call site (caller removes). Sets `m_localTrackLoaded[ch] = true` and `m_remoteReady[ch] = true` (receiver assumes sender ready). Calls `updateGating(ch)`. |
+| Receiver ready semantics | On receiver, `m_remoteReady[ch]` set to true when track received (sender implicitly has the track). Receiver-side gating becomes ready once track is loaded locally. |
+| Teardown | `leaveSession` / `deleteSubComponents` resets all ready COs to 0.0, unmutes all channels (mute=0.0), clears incoming map. Ready COs NOT deleted between sessions (reused). |

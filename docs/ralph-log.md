@@ -82,3 +82,23 @@ DONE: 1.4.6 merged into release/1.4. (Note: loop re-ran task 1.4.6 a second time
 ## 2026-07-12 17:15
 
 All 1.4 tasks complete. Starting phase review.
+
+## 2026-07-12 18:03
+
+DONE: 1.6.1 merged into release/1.6.
+
+## 2026-07-12 18:29
+
+DONE: 1.6.2 merged into release/1.6.
+
+## 2026-07-12 18:45
+
+DONE: 1.6.3 merged into release/1.6.
+
+## 2026-07-12 19:20
+
+DONE: 1.6.4 merged into release/1.6.
+
+## 2026-07-12 19:49
+
+DONE: 1.6.5 merged into release/1.6.
