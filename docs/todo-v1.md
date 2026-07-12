@@ -158,7 +158,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.4.2` Prediction — hold-last-input
+- [x] `1.4.2` Prediction — hold-last-input
   - **Goal:** `src/netmix/prediction.h/.cpp`: for ticks with no confirmed remote frame, predict empty event set with continuous controls holding last known value (i.e. prediction = "no new input"). Pluggable interface (strategy class) so velocity-extrapolation can be added later without touching callers.
   - **Touches:** `src/netmix/prediction.h`, `src/netmix/prediction.cpp`, `CMakeLists.txt`, `src/test/netmixprediction_test.cpp`
   - **Success:** Predicted frames deterministic given buffer state; interface allows swapping strategy.
