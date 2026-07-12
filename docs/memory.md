@@ -159,3 +159,11 @@
 | Tick comparison | Modular arithmetic via `tickLt`/`tickLe`/`tickGt`/`tickGe` using `(qint32)(a - b)` (window << 2^31, safe for capacity 256). |
 | No thread safety | InputBuffer lives in Qt thread (same as Capture/Applier). No locks. Not accessed from audio callback. |
 | Event limit | `kMaxEventsPerTick = 32` (duplicated from `InputFramePacker`). Events truncated to this count on insert. |
+
+## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
+
+| Decision | Value |
+|---|---|
+| Strategy interface | `PredictionStrategy` abstract base class with virtual `predict(tick, buffer)`. `HoldLastPrediction` is the initial implementation. Enables swapping to velocity-extrapolation or NN prediction without touching callers. |
+| Hold-last algorithm | For ticks with a confirmed remote frame: return it as-is. For ticks without: search backward up to `kDefaultCapacity` ticks, find the most recent confirmed frame, copy only `ControlKind::Continuous` events (volume/pregain/filter/crossfader). Discrete/seek events NOT carried forward — they fire once and don't hold. |
+| InputBuffer API extension | `isRemoteConfirmed(tick)` added to `InputBuffer` (was missing from 1.4.1). Returns true only if slot is occupied, tick matches, AND `confirmed` flag is set. Required by prediction to distinguish confirmed data from previously-predicted frames during re-simulation. Without this, re-prediction after a rollback would return stale predicted frames with outdated last-known values. |
