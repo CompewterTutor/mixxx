@@ -47,3 +47,42 @@
 | Post-merge gate | `ctest -R Netmix`: 33/33 pass |
 | Trunk tree after merge | Identical to `release/1.1` (diff empty) |
 | Phase 1.2 next | Begin on `task-1.2.1` off `release/1.2` (created from trunk after this merge) |
+
+## 2026-07-12: Control Allowlist (Task 1.2.1)
+
+| Decision | Value |
+|---|---|
+| Wire ID assignment | Flat sequential IDs per-deck: play(1-4), cue_default(5-8), start(9-12), end(13-16), playposition(17-20), rate(21-24), volume(25-28), pregain(29-32), hotcue_1..8_activate(33-64), EQ superknob(65-68), QuickEffect superknob(69-72); crossfader(73). 73 entries total. |
+| ControlKind | Continuous for volume/rate/pregain/filter-superknobs/crossfader; Discrete for play/cue_default/start/end/hotcue; Seek for playposition. |
+| Lookup maps | `QHash<ConfigKey, quint16>` key→wireId, `QHash<quint16, AllowlistEntry>` wireId→entry. Built once on first access. |
+| Decks | 4 decks expanded at build-time from `[ChannelN]` pattern. |
+
+## 2026-07-12: ControlCapture (Task 1.2.2)
+
+| Decision | Value |
+|---|---|
+| Echo suppression | Uses `ControlProxy::connectValueChanged` built-in `pSetter != this` check. Capture creates proxies; Applier reuses same proxy instances for `set()`, so `pSetter == proxy` → capture's signal handler drops it. No separate sentinel object needed. |
+| Proxy ownership | `ControlProxy` objects parented to `ControlCapture` (`this` as parent). Deleted via `qDeleteAll` in `stop()`, or by Qt parent chain in destructor. |
+| Tick stamping | Each captured event stamped with `SessionClock::agreedTick()` at the moment the signal fires. |
+| Connection type | `Qt::DirectConnection` — capture and applier both live in Qt thread, never audio thread. |
+| Capture lifetime | `start(clock)`→`stop()` cycle. Proxies disconnected and destroyed on stop. Restart works cleanly. |
+
+## 2026-07-12: ControlApplier (Task 1.2.3)
+
+| Decision | Value |
+|---|---|
+| Proxy reference | Applier holds raw pointers to Capture's proxies. Valid only while Capture is started. |
+| wireId lookup | `QHash<quint16, int>` mapping wireId→proxy index, rebuilt on `setProxies`. |
+| Ramp interpolation | Linear: `current = target + (start - target) * (remaining/total)`. Pre-allocated vector sized for continuous controls. |
+| Ramp supersession | A new `apply()` or `applyRamped()` on the same wireId cancels the in-flight ramp. Previous ramp entry marked `remainingTicks=0` (in `apply`) or superseded start value (in `applyRamped`). |
+| Seek routing | `ControlKind::Seek` applies directly (`proxy->set()`) even if `applyRamped` is called — no ramp for seek controls. |
+
+## 2026-07-12: InputFrame Packer (Task 1.2.4)
+
+| Decision | Value |
+|---|---|
+| Ring buffer | 8 slots fixed at compile time (`kRingSize=8`), each with inline `NetmixInputFrameEvent[32]` array. Pre-allocated, no heap allocation in capture→pack path. |
+| Dedup | Same wireId twice in one tick → last value wins. Linear scan over per-tick events (max 32, cheap). |
+| framesForSend | Returns up to `batchSize` most recently finalized frames, newest first. Walks ring buffer backward.|
+| Size guard | 4 ticks × 20 events each → total encoded batch under 1200 bytes (test-enforced). |
+| Clear | Resets all slots and head index. |

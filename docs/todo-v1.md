@@ -62,7 +62,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.2 — Control Capture & Apply
 
-- [ ] `1.2.1` Syncable-control allowlist
+- [x] `1.2.1` Syncable-control allowlist
   - **Goal:** `src/netmix/controlallowlist.h/.cpp`: static table of synced ConfigKeys — per deck (`[ChannelN]`): play, cue_default, start, end, playposition seek (`playposition` set), rate, volume, pregain, filter/EQ knobs (`[EqualizerRackN_...]` and `[QuickEffectRackN_...]` superknob), hotcue_X_activate; global: `[Master],crossfader`. Each entry: ConfigKey pattern, control kind (continuous | discrete | seek), stable u16 wire id. Lookup both directions (key→id, id→key).
   - **Touches:** `src/netmix/controlallowlist.h`, `src/netmix/controlallowlist.cpp`, `CMakeLists.txt`, `src/test/netmixallowlist_test.cpp`
   - **Success:** Deterministic wire ids (stable across runs/versions); unknown keys map to nothing; every listed control resolves against a live ControlObject in a test harness.
@@ -70,7 +70,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.2.2` ControlCapture — observe local control changes
+- [x] `1.2.2` ControlCapture — observe local control changes
   - **Goal:** `src/netmix/controlcapture.h/.cpp`: on session start, resolve allowlist entries to `ControlProxy` instances and connect `valueChanged`; emit `captured(tick, wireId, value)` stamped with current SessionClock tick. Must ignore changes whose `pSetter` is the netmix applier (echo suppression) — use the applier QObject sentinel per `ControlProxy::connectValueChanged` semantics (`src/control/controlproxy.h:162`).
   - **Touches:** `src/netmix/controlcapture.h`, `src/netmix/controlcapture.cpp`, `CMakeLists.txt`, `src/test/netmixcapture_test.cpp`
   - **Success:** Setting an allowlisted CO produces exactly one captured event; applier-originated sets produce zero; non-allowlisted COs produce zero.
@@ -78,7 +78,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.2.3` ControlApplier — apply remote control events
+- [x] `1.2.3` ControlApplier — apply remote control events
   - **Goal:** `src/netmix/controlapplier.h/.cpp`: given `(wireId, value)`, resolve to CO and set it with the applier object as setter (so capture ignores it). Seek-kind events route through the normal `playposition`/seek COs (which feed EngineBuffer's lock-free `QueuedSeek`). Discrete kinds set exact value; continuous kinds support `applyRamped(wireId, target, ticks)` — linear ramp stepped by tick callback — for later interpolation reconciliation.
   - **Touches:** `src/netmix/controlapplier.h`, `src/netmix/controlapplier.cpp`, `CMakeLists.txt`, `src/test/netmixapplier_test.cpp`
   - **Success:** Applied values land on COs; capture (from 1.2.2) does not re-emit them; ramp converges to target in the requested tick count.
@@ -86,7 +86,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.2.4` InputFrame packing — per-tick aggregation with redundancy
+- [x] `1.2.4` InputFrame packing — per-tick aggregation with redundancy
   - **Goal:** `src/netmix/inputframe.h/.cpp`: aggregate captured events into per-tick InputFrames `{tick, [(wireId, value)...]}`; serialize batches of the last N frames (default 4) per UDP datagram (GGPO-style redundancy so one received packet fills small gaps). Dedup: same wireId twice in one tick keeps last value.
   - **Touches:** `src/netmix/inputframe.h`, `src/netmix/inputframe.cpp`, `src/netmix/protocol.h/.cpp` (InputFrame payload), `CMakeLists.txt`, `src/test/netmixinputframe_test.cpp`
   - **Success:** Encode/decode round-trip; batch of N frames stays under 1200 bytes for realistic event rates (assert in test); dedup correct.
@@ -94,7 +94,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.2.5` Phase merge: release/1.2 → feat/rollback-network-mixing
+- [x] `1.2.5` Phase merge: release/1.2 → feat/rollback-network-mixing
   - **Goal:** Phase review passes, branch merges cleanly into the trunk.
   - **Touches:** todo-v1.md checkboxes
   - **Success:** All 1.2.x tasks checked; review returns PHASE_APPROVED.
