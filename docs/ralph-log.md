@@ -70,3 +70,11 @@ DONE: 1.4.4 merged into release/1.4.
 ## 2026-07-12 16:57
 
 DONE: 1.4.6 merged into release/1.4.
+
+## 2026-07-12 17:15
+
+DONE: 1.4.6 merged into release/1.4.
+
+## 2026-07-12 17:15
+
+All 1.4 tasks complete. Starting phase review.
