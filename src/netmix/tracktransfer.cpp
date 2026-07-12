@@ -51,7 +51,8 @@ void TrackTransfer::sendTrack(
         const QString& filePath,
         const QString& hash,
         const QString& name,
-        const QString& mime) {
+        const QString& mime,
+        quint16 channelId) {
     QFile* file = new QFile(filePath, this);
     if (!file->open(QIODevice::ReadOnly)) {
         qWarning("[Netmix] TrackTransfer::sendTrack: cannot open %s",
@@ -75,6 +76,7 @@ void TrackTransfer::sendTrack(
     offer.size = ot.totalSize;
     offer.name = name;
     offer.mime = mime;
+    offer.channelId = channelId;
 
     m_pSession->sendMessage({NetmixMessageType::TrackOffer, offer});
 }

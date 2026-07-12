@@ -211,6 +211,7 @@ QDataStream& operator<<(QDataStream& stream, const NetmixTrackOffer& msg) {
     stream << msg.size;
     stream << msg.name;
     stream << msg.mime;
+    stream << msg.channelId;
     return stream;
 }
 
@@ -219,6 +220,7 @@ QDataStream& operator>>(QDataStream& stream, NetmixTrackOffer& msg) {
     stream >> msg.size;
     stream >> msg.name;
     stream >> msg.mime;
+    stream >> msg.channelId;
     return stream;
 }
 

@@ -262,7 +262,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.6.4` Live-sound gating + remote deck load + analysis
+- [x] `1.6.4` Live-sound gating + remote deck load + analysis
   - **Goal:** A session deck may route live sound only when its track is both-ready: gate by holding the channel's netmix-ready CO and muting channel output via existing gain path until ready (no engine-callback changes — use channel volume/enable COs). Remote side auto-loads the cached file to the mirrored deck via `Track::newTemporary(path)` (`src/track/track.h:42`) through `PlayerManager::slotLoadTrackToPlayer`, then schedules analysis (`Library::analyzeTracks`) so beats/waveform populate.
   - **Touches:** `src/netmix/netmixsessionmanager.cpp`, `src/netmix/controlapplier.cpp`, `src/test/netmixsession_test.cpp`
   - **Success:** Deck stays silent until both-ready; remote deck ends up with the cached track loaded and analysis queued.
