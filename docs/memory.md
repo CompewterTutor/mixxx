@@ -257,6 +257,19 @@
 | CancelAll | Closes all file handles, removes partial files, clears both transfer maps. |
 | No protocol changes | All six track message structs (TrackOffer, TrackAccept, TrackChunk, TrackComplete, TrackReady) existed from Task 1.1.2 with full serialization. |
 
+## 2026-07-12: Queue-Triggered Transfer & Readiness Handshake (Task 1.6.3)
+
+| Decision | Value |
+|---|---|
+| Entry point | `NetmixSessionManager::notifyTrackLoaded(channelId, filePath, name, mime)` — called externally (CoreServices/PlayerManager) when track loaded on a session deck |
+| Ownership gate | Transfer only starts if `isOwnedByLocal(channelId)`. Unowned decks skip transfer entirely. |
+| Hash for local tracks | `TrackCache::hashFile()` static method computes SHA-256 without inserting into local cache (local tracks not redundantly copied). |
+| Ready state vectors | `QVector<bool>(5, false)` per mgr — `m_localTrackLoaded[ch]` + `m_remoteReady[ch]` → `isDeckReady(ch)` only true when both set. |
+| Stale transfer detection | `m_currentHash[channelId]` tracked. If TrackReady arrives for a hash that doesn't match `m_currentHash[ch]` (deck loaded a new track mid-transfer), the stale complete is ignored. |
+| TrackTransfer creation | Lazy: created in `onTcpConnected()` only if `m_pTrackCache` was set via `setTrackCache()`. Raw (non-owning) pointer for cache. |
+| Teardown | TrackTransfer `deleteLater`'d in `deleteSubComponents()`. Vectors cleared. `m_pendingTransfers` cleared. |
+| Hash -> channelId map | `QHash<QString, quint16> m_pendingTransfers` tracks which deck each outgoing transfer belongs to. Used in `onTrackTransferComplete`/`onTrackTransferFailed` to route back to the right channel. |
+
 ## 2026-07-12: TrackCache Directory & Index (Task 1.6.1)
 
 | Decision | Value |

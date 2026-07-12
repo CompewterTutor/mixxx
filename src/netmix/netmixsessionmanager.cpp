@@ -4,6 +4,8 @@
 #include "control/controlproxy.h"
 #include "moc_netmixsessionmanager.cpp"
 #include "netmix/channelownership.h"
+#include "netmix/trackcache.h"
+#include "netmix/tracktransfer.h"
 #include "util/logger.h"
 
 namespace {
@@ -35,6 +37,18 @@ void NetmixSessionManager::setState(SessionState state) {
     m_state = state;
     emit sessionStateChanged(state);
     m_pStatusCO->forceSet(static_cast<double>(state));
+}
+
+void NetmixSessionManager::setTrackCache(TrackCache* cache) {
+    m_pTrackCache = cache;
+}
+
+bool NetmixSessionManager::isDeckReady(int channelId) const {
+    if (channelId < 0 || channelId >= 5) {
+        return false;
+    }
+    return m_localTrackLoaded.value(channelId) &&
+            m_remoteReady.value(channelId);
 }
 
 void NetmixSessionManager::setEnabled(bool enabled) {
@@ -234,6 +248,21 @@ void NetmixSessionManager::onTcpConnected() {
                 });
     }
 
+    // Create track transfer if cache is available
+    if (m_pTrackCache) {
+        m_pTrackTransfer = new TrackTransfer(m_pTcpSession, m_pTrackCache, this);
+        connect(m_pTrackTransfer, &TrackTransfer::complete,
+                this, &NetmixSessionManager::onTrackTransferComplete);
+        connect(m_pTrackTransfer, &TrackTransfer::failed,
+                this, &NetmixSessionManager::onTrackTransferFailed);
+    }
+
+    // Initialize ready-state tracking
+    m_localTrackLoaded = QVector<bool>(5, false);
+    m_remoteReady = QVector<bool>(5, false);
+    m_currentHash = QVector<QString>(5);
+    m_pendingTransfers.clear();
+
     setState(Connected);
 }
 
@@ -333,6 +362,81 @@ void NetmixSessionManager::onTcpMessageReceived(const NetmixMessage& msg) {
     }
 }
 
+void NetmixSessionManager::notifyTrackLoaded(int channelId,
+        const QString& filePath,
+        const QString& name,
+        const QString& mime) {
+    if (!m_pChannelOwnership || !m_pTrackTransfer) {
+        return;
+    }
+    if (channelId < 0 || channelId >= 5) {
+        return;
+    }
+    if (!m_pChannelOwnership->isOwnedByLocal(
+                static_cast<quint16>(channelId))) {
+        kLogger.warning() << "notifyTrackLoaded: channel" << channelId
+                          << "not owned locally";
+        return;
+    }
+
+    QString hash = TrackCache::hashFile(filePath);
+    if (hash.isEmpty()) {
+        kLogger.warning() << "notifyTrackLoaded: failed to hash"
+                          << filePath;
+        return;
+    }
+
+    if (m_pendingTransfers.contains(hash)) {
+        kLogger.warning() << "notifyTrackLoaded: hash" << hash
+                          << "already pending transfer";
+    }
+
+    m_localTrackLoaded[channelId] = true;
+    m_currentHash[channelId] = hash;
+    m_pendingTransfers[hash] = static_cast<quint16>(channelId);
+
+    m_pTrackTransfer->sendTrack(filePath, hash, name, mime);
+}
+
+void NetmixSessionManager::onTrackTransferComplete(const QString& hash) {
+    auto it = m_pendingTransfers.find(hash);
+    if (it == m_pendingTransfers.end()) {
+        return;
+    }
+    quint16 channelId = it.value();
+    m_pendingTransfers.erase(it);
+
+    if (channelId >= static_cast<quint16>(m_currentHash.size()) ||
+            m_currentHash[channelId] != hash) {
+        return;
+    }
+
+    m_remoteReady[channelId] = true;
+
+    if (m_localTrackLoaded[channelId]) {
+        emit deckReady(channelId);
+    }
+}
+
+void NetmixSessionManager::onTrackTransferFailed(
+        const QString& hash, const QString& reason) {
+    auto it = m_pendingTransfers.find(hash);
+    if (it == m_pendingTransfers.end()) {
+        return;
+    }
+    quint16 channelId = it.value();
+    m_pendingTransfers.erase(it);
+
+    if (channelId >= static_cast<quint16>(m_currentHash.size()) ||
+            m_currentHash[channelId] != hash) {
+        return;
+    }
+
+    m_remoteReady[channelId] = false;
+    kLogger.warning() << "Track transfer failed for channel" << channelId
+                      << "hash" << hash << "reason:" << reason;
+}
+
 void NetmixSessionManager::onTcpDisconnected() {
     if (m_pCapture) {
         m_pCapture->stop();
@@ -384,6 +488,9 @@ void NetmixSessionManager::deleteSubComponents() {
     if (m_pChannelOwnership) {
         m_pChannelOwnership->disconnect(this);
     }
+    if (m_pTrackTransfer) {
+        m_pTrackTransfer->disconnect(this);
+    }
 
     // Use deleteLater to avoid deleting an object while it's emitting a signal
     if (m_pApplier) {
@@ -414,6 +521,17 @@ void NetmixSessionManager::deleteSubComponents() {
         m_pChannelOwnership->deleteLater();
         m_pChannelOwnership = nullptr;
     }
+    if (m_pTrackTransfer) {
+        m_pTrackTransfer->deleteLater();
+        m_pTrackTransfer = nullptr;
+    }
+
+    // Clear ready-state tracking
+    m_localTrackLoaded.clear();
+    m_remoteReady.clear();
+    m_currentHash.clear();
+    m_pendingTransfers.clear();
+
     if (m_pTcpSession) {
         m_pTcpSession->deleteLater();
         m_pTcpSession = nullptr;
