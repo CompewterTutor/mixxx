@@ -134,3 +134,16 @@
 | Protocol version bumped | `kNetmixProtocolVersion` = 3 for `udpPort` field in `NetmixHello`. |
 | `udpPort` in Hello | Both peers advertise their UDP listener port in `NetmixHello.udpPort`. Host uses this to learn client's UDP port (which is auto-assigned). Client assumes host's UDP port == host's TCP port (both listen on same port). |
 | Runtime gate | `setEnabled(bool)` flag (no `#ifdef`). When disabled, `hostSession`/`joinSession` return immediately without changing state. |
+
+## 2026-07-12: Phase Merge 1.3 (Task 1.3.5)
+
+| Decision | Value |
+|---|---|
+| Merge commit | `7bffbeb4c1` on `feat/rollback-network-mixing` |
+| Strategy | `--no-ff` (branch history preserved) |
+| Source | `release/1.3` (11 commits: tasks 1.3.1–1.3.4 plus merge commits) |
+| Pre-merge gate | `ctest -R Netmix`: 85/85 pass |
+| Post-merge gate | `ctest -R Netmix`: 85/85 pass |
+| Trunk tree after merge | Identical to `release/1.3` (diff empty) |
+| Deferred: ClockSync UDP port-sharing | `ClockSync::start` fails on macOS due to `SO_REUSEPORT` not exposed by Qt. Creation commented out in `NetmixSessionManager::onTcpConnected`. Unresolved — fix in Phase 1.4/1.5. See memory.md 2026-07-12 line 132. |
+| Phase 1.4 next | Begin on `task-1.4.1` off `release/1.4` (created from trunk after this merge) |
