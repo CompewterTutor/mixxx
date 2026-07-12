@@ -1527,6 +1527,7 @@ add_library(
   src/network/networktask.cpp
   src/network/webtask.cpp
   src/netmix/netmixsessionmanager.cpp
+  src/netmix/protocol.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -2905,6 +2906,7 @@ if(BUILD_TESTING)
     src/test/enginemixertest.cpp
     src/test/enginemicrophonetest.cpp
     src/test/enginesynctest.cpp
+    src/test/netmixprotocol_test.cpp
     src/test/fileinfo_test.cpp
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp

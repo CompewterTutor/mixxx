@@ -26,7 +26,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Low
   - **Model:** Standard
 
-- [ ] `1.1.2` Protocol message definitions and serialization
+- [x] `1.1.2` Protocol message definitions and serialization
   - **Goal:** `src/netmix/protocol.h/.cpp`: versioned wire protocol. Message enum (Hello, HelloAck, Ping, Pong, InputFrame, OwnershipClaim, OwnershipGrant, OwnershipDeny, OwnershipRelease, TrackOffer, TrackAccept, TrackChunk, TrackComplete, TrackReady, Bye), fixed little-endian header {magic, version, type, length}, QDataStream-based encode/decode helpers returning std::optional on malformed input. No sockets yet.
   - **Touches:** `src/netmix/protocol.h`, `src/netmix/protocol.cpp`, `CMakeLists.txt`, `src/test/netmixprotocol_test.cpp`
   - **Success:** Round-trip encode/decode for every message type; decode rejects bad magic, bad version, truncated payloads without crashing.
