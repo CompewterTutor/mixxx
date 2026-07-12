@@ -122,7 +122,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.3.3` Clock synchronization — NTP-lite offset estimation
+- [x] `1.3.3` Clock synchronization — NTP-lite offset estimation
   - **Goal:** `src/netmix/clocksync.h/.cpp`: periodic Ping/Pong over UDP measuring RTT and peer tick offset; sliding median filter (window 16) feeds `SessionClock::setOffset`. Session start: initiator proposes tick 0 epoch in HelloAck; both clocks converge within ±1 tick under symmetric latency. Exposes smoothed RTT for UI.
   - **Touches:** `src/netmix/clocksync.h`, `src/netmix/clocksync.cpp`, `src/netmix/protocol.h/.cpp` (Ping/Pong payloads), `CMakeLists.txt`, `src/test/netmixclocksync_test.cpp`
   - **Success:** Simulated latency/jitter scenarios converge to correct offset; asymmetric spike outliers filtered by median.
