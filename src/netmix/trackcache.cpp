@@ -198,6 +198,10 @@ void TrackCache::rebuildIndex() {
             << "entries, size=" << m_cacheSizeBytes;
 }
 
+QString TrackCache::hashFile(const QString& filePath) {
+    return computeSha256(filePath);
+}
+
 QString TrackCache::computeSha256(const QString& filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {

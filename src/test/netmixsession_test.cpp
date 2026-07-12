@@ -3,15 +3,19 @@
 #include <memory>
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QElapsedTimer>
+#include <QFile>
 #include <QHostAddress>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QThread>
 
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "netmix/channelownership.h"
 #include "netmix/netmixsessionmanager.h"
+#include "netmix/trackcache.h"
 #include "test/mixxxtest.h"
 
 namespace {
@@ -268,6 +272,168 @@ TEST_F(NetmixSessionTest, OwnershipLoopback_VetoedClaim) {
     EXPECT_FALSE(ownershipA->claim(1));
 
     teardownPair(mgrA, mgrB);
+}
+
+// ---------------------------------------------------------------------------
+// 1.6.3: Queue-triggered background send + readiness handshake
+// ---------------------------------------------------------------------------
+
+static QString createTempTrackFile(const QString& dirPath) {
+    QString path = QDir(dirPath).filePath(QStringLiteral("test_track.mp3"));
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return QString();
+    }
+    QByteArray content("simulated audio content for netmix transfer testing");
+    file.write(content);
+    file.close();
+    return path;
+}
+
+TEST_F(NetmixSessionTest, LoadOnOwnedDeck_RemoteCachePopulated) {
+    QTemporaryDir cacheDirA;
+    QTemporaryDir cacheDirB;
+    ASSERT_TRUE(cacheDirA.isValid());
+    ASSERT_TRUE(cacheDirB.isValid());
+
+    TrackCache cacheA(cacheDirA.path());
+    TrackCache cacheB(cacheDirB.path());
+    ASSERT_TRUE(cacheA.initialize());
+    ASSERT_TRUE(cacheB.initialize());
+
+    QString srcPath = createTempTrackFile(cacheDirA.path());
+    ASSERT_FALSE(srcPath.isEmpty());
+    ASSERT_TRUE(QFile::exists(srcPath));
+
+    QString expectedHash = TrackCache::hashFile(srcPath);
+    ASSERT_FALSE(expectedHash.isEmpty());
+    ASSERT_EQ(64, expectedHash.size());
+
+    // Set up managers with caches before connection
+    auto mgrA = std::make_unique<NetmixSessionManager>();
+    auto mgrB = std::make_unique<NetmixSessionManager>();
+
+    mgrA->setTrackCache(&cacheA);
+    mgrB->setTrackCache(&cacheB);
+    mgrA->setEnabled(true);
+    mgrB->setEnabled(true);
+
+    mgrA->hostSession(0);
+    ASSERT_EQ(NetmixSessionManager::Connecting, mgrA->state());
+
+    quint16 portA = mgrA->tcpSession()->server()->serverPort();
+    ASSERT_GT(portA, 0);
+
+    mgrB->joinSession(QHostAddress::LocalHost, portA);
+    ASSERT_EQ(NetmixSessionManager::Connecting, mgrB->state());
+
+    // Wait for both to reach Connected
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < 5000) {
+        pumpEvents(50);
+        if (mgrA->state() == NetmixSessionManager::Connected &&
+                mgrB->state() == NetmixSessionManager::Connected) {
+            break;
+        }
+    }
+    ASSERT_EQ(NetmixSessionManager::Connected, mgrA->state());
+    ASSERT_EQ(NetmixSessionManager::Connected, mgrB->state());
+
+    auto* ownershipA = mgrA->channelOwnership();
+    ASSERT_NE(nullptr, ownershipA);
+
+    // mgrA claims channel 1
+    ASSERT_TRUE(ownershipA->claim(1));
+    pumpEvents(1000);
+    ASSERT_TRUE(ownershipA->isOwnedByLocal(1));
+
+    // Load track on mgrA's owned channel 1
+    mgrA->notifyTrackLoaded(1, srcPath, QStringLiteral("test.mp3"),
+            QStringLiteral("audio/mpeg"));
+
+    // Wait for transfer to complete
+    pumpEvents(3000);
+
+    // Remote cache should contain verified copy
+    EXPECT_TRUE(cacheB.contains(expectedHash));
+    EXPECT_TRUE(cacheB.verify(expectedHash));
+
+    // Sender should report deck ready
+    EXPECT_TRUE(mgrA->isDeckReady(1));
+
+    // Cached file should be byte-identical
+    QString cachedPath = cacheB.pathForHash(expectedHash);
+    ASSERT_FALSE(cachedPath.isEmpty());
+    EXPECT_TRUE(QFile::exists(cachedPath));
+
+    mgrA->leaveSession();
+    mgrB->leaveSession();
+    pumpEvents(500);
+}
+
+TEST_F(NetmixSessionTest, LoadOnUnownedDeck_SkipsTransfer) {
+    QTemporaryDir cacheDirA;
+    QTemporaryDir cacheDirB;
+    ASSERT_TRUE(cacheDirA.isValid());
+    ASSERT_TRUE(cacheDirB.isValid());
+
+    TrackCache cacheA(cacheDirA.path());
+    TrackCache cacheB(cacheDirB.path());
+    ASSERT_TRUE(cacheA.initialize());
+    ASSERT_TRUE(cacheB.initialize());
+
+    QString srcPath = createTempTrackFile(cacheDirA.path());
+    ASSERT_FALSE(srcPath.isEmpty());
+
+    QString expectedHash = TrackCache::hashFile(srcPath);
+    ASSERT_FALSE(expectedHash.isEmpty());
+
+    auto mgrA = std::make_unique<NetmixSessionManager>();
+    auto mgrB = std::make_unique<NetmixSessionManager>();
+
+    mgrA->setTrackCache(&cacheA);
+    mgrB->setTrackCache(&cacheB);
+    mgrA->setEnabled(true);
+    mgrB->setEnabled(true);
+
+    mgrA->hostSession(0);
+    quint16 portA = mgrA->tcpSession()->server()->serverPort();
+    mgrB->joinSession(QHostAddress::LocalHost, portA);
+
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < 5000) {
+        pumpEvents(50);
+        if (mgrA->state() == NetmixSessionManager::Connected &&
+                mgrB->state() == NetmixSessionManager::Connected) {
+            break;
+        }
+    }
+    ASSERT_EQ(NetmixSessionManager::Connected, mgrA->state());
+    ASSERT_EQ(NetmixSessionManager::Connected, mgrB->state());
+
+    // mgrB claims channel 1 (mgrA does NOT own it)
+    auto* ownershipB = mgrB->channelOwnership();
+    ASSERT_NE(nullptr, ownershipB);
+    ASSERT_TRUE(ownershipB->claim(1));
+    pumpEvents(1000);
+    ASSERT_TRUE(ownershipB->isOwnedByLocal(1));
+
+    // mgrA tries to load track on channel 1 — not owned by mgrA
+    mgrA->notifyTrackLoaded(1, srcPath, QStringLiteral("test.mp3"),
+            QStringLiteral("audio/mpeg"));
+    pumpEvents(1000);
+
+    // mgrA should NOT have deck ready
+    EXPECT_FALSE(mgrA->isDeckReady(1));
+
+    // cacheB should NOT contain the file (no transfer occurred)
+    EXPECT_FALSE(cacheB.contains(expectedHash));
+
+    mgrA->leaveSession();
+    mgrB->leaveSession();
+    pumpEvents(500);
 }
 
 } // namespace

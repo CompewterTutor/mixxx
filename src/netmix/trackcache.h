@@ -25,6 +25,8 @@ class TrackCache : public QObject {
 
     QString cacheDirPath() const;
 
+    static QString hashFile(const QString& filePath);
+
     std::optional<QString> insert(const QString& sourceFilePath);
 
     std::optional<CacheEntry> lookup(const QString& hash) const;
