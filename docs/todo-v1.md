@@ -34,7 +34,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.1.3` SessionClock — fixed-rate tick from engine frame time
+- [x] `1.1.3` SessionClock — fixed-rate tick from engine frame time
   - **Goal:** `src/netmix/sessionclock.h/.cpp`: converts accumulated audio frames (fed via `onFramesProcessed(int frames, int sampleRate)`) into a monotonically increasing 240 Hz tick counter. Pure logic, no Qt timers, no wall clock. Supports an offset (set by later clock-sync task) so both peers agree on absolute tick numbers.
   - **Touches:** `src/netmix/sessionclock.h`, `src/netmix/sessionclock.cpp`, `CMakeLists.txt`, `src/test/netmixsessionclock_test.cpp`
   - **Success:** Deterministic: identical frame-feed sequences yield identical tick sequences. Handles odd buffer sizes and sample-rate values without drift (rational accumulation, no float error growth).

@@ -1,5 +1,16 @@
 # Netmix — Cross-Cutting Decisions
 
+## 2026-07-12: SessionClock Tick Math (Task 1.1.3)
+
+| Decision | Value |
+|---|---|
+| Tick rate | 240 Hz (constant `SessionClock::kTickRate`) |
+| Tick computation | `(totalFrames * kTickRate) / sampleRate` — integer floor from accumulated totalFrames, recomputed every `onFramesProcessed`. No float, no per-buffer remainder accumulation. |
+| Drift | Zero by construction — every tick is a fresh floor of the rational totalFrames*kTickRate/sampleRate. |
+| Sample rate passed per call | `onFramesProcessed(int frames, int sampleRate)`. Rate may differ between calls; tick math uses the current call's rate for the entire accumulated totalFrames. Monotonicity enforced via `newTick > m_currentTick` guard. |
+| `agreedTick()` | `(quint32)((qint64)currentTick + offset)` — wraps at 2^32 (~207 days at 240 Hz), two's complement deltas work naturally. |
+| Signal emission | `tickAdvanced(quint32 tick)` emitted from `onFramesProcessed` when tick increments. Caller must ensure this is safe (Qt thread, or queued connection from engine thread). Flagged for review in later threading audit. |
+
 ## 2026-07-12: Wire Protocol (Task 1.1.2)
 
 | Decision | Value |
