@@ -238,7 +238,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.6 — Track Pre-Transfer & Remote Cache
 
-- [ ] `1.6.1` Remote track cache directory and index
+- [x] `1.6.1` Remote track cache directory and index
   - **Goal:** `src/netmix/trackcache.h/.cpp`: cache dir `<settingsdir>/netmix_cache/` (settings dir via `ConfigObject::getSettingsPath`, `src/preferences/configobject.cpp:209`); files stored as `<sha256>.<ext>`; JSON index file mapping hash → {original filename, size, source peer, added timestamp, verified flag}. Lookup, insert, verify (re-hash), evict APIs. Corrupt/missing index rebuilds from directory scan.
   - **Touches:** `src/netmix/trackcache.h`, `src/netmix/trackcache.cpp`, `CMakeLists.txt`, `src/test/netmixtrackcache_test.cpp`
   - **Success:** Insert/lookup/verify round-trip with temp dirs; index rebuild works; no writes outside cache dir (path traversal guarded).
