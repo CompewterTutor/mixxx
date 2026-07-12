@@ -6,6 +6,8 @@
 #include "control/controlproxy.h"
 #include "netmix/controlallowlist.h"
 
+class ChannelOwnership;
+
 class ControlApplier : public QObject {
     Q_OBJECT
   public:
@@ -13,6 +15,8 @@ class ControlApplier : public QObject {
     ~ControlApplier() override;
 
     void setProxies(const QVector<ControlProxy*>& proxies);
+    void setOwnership(ChannelOwnership* ownership) { m_pOwnership = ownership; }
+    void setOwnershipFilterEnabled(bool enabled) { m_ownershipFilterEnabled = enabled; }
     void apply(quint16 wireId, double value);
     void applyRamped(quint16 wireId, double target, int ticks);
     void advanceTick();
@@ -35,6 +39,10 @@ class ControlApplier : public QObject {
 
     // Same proxies owned by ControlCapture — raw pointers, not owned
     QVector<ControlProxy*> m_proxies;
+
+    // Ownership filtering
+    ChannelOwnership* m_pOwnership = nullptr;
+    bool m_ownershipFilterEnabled = true;
 
     // Active ramps (one per continuous control max)
     QVector<RampEntry> m_ramps;

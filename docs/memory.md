@@ -204,6 +204,21 @@
 | Continuous values | Snap only touches tick, never value (no value parameter in `snap()`). |
 | Audio-callback purity | Quantizer runs only in Qt thread (same as session manager). No locks, no allocations. |
 
+## 2026-07-12: Channel Ownership & Locks (Phase 1.5)
+
+| Decision | Value |
+|---|---|
+| Protocol version | Bumped to 4. `NetmixHello` and `NetmixHelloAck` carry `QVector<quint16> preassignedChannels`. Old v3 decoders reject v4 payloads via `atEnd()` check (shorter payload). |
+| Pre-assignment race | Lower peerId wins. If both peers pre-assign the same channel, the handshake's lower peerId (host=0) gets it. Resolved in `ChannelOwnership::resolvePreAssignment()` called after both local+remote pre-assignment lists are known. |
+| Simultaneous claim | Both peers claim an open channel before seeing each other's claim. Lower peerId wins: lower peer sends Deny to higher, higher peer auto-concedes (auto-denies locally) and sends Grant to lower. Both converge to same owner. |
+| Channel ID map | wireId → channelId via `ControlAllowlist::channelForWireId()`. Per-deck wireIds (1-72) map to channel (1-4) using `((wireId-1) % 4) + 1`. Crossfader (wireId 73) → channelId 0. Invalid wireIds → nullopt. |
+| Capture enforcement | `ControlCapture::onProxyValueChange` checks `isOwnedByLocal()` via `ChannelOwnership`. Non-owned channel events are dropped before `emit captured()`. Ownership check runs before echo suppression (`m_muted` check). |
+| Applier enforcement | `ControlApplier::apply()`/`applyRamped()` checks `isOwnedByRemote()` via `ChannelOwnership` when ownership filter is enabled. Filter enabled only for incoming remote input frames (`onInputFrameReceived`). Disabled for re-simulation. |
+| Ownership messages | Claim/Grant/Deny/Release routed through `TcpSession::messageReceived` → `NetmixSessionManager::onTcpMessageReceived` → `ChannelOwnership` methods. Auto-response: unowned channel receiving claim → Grant; owned channel receiving claim → Deny. |
+| Disconnect cleanup | `ChannelOwnership::autoReleaseAll()` called on `leaveSession()` and `onTcpDisconnected()`. All channels reset to Unowned. |
+| helloComplete signal | Emitted by `TcpSession` after processing `Hello` or `HelloAck`, carrying the remote peer's pre-assigned channels. Session manager feeds both pre-assignment lists to `ChannelOwnership::resolvePreAssignment()`. Signal connected before handshake starts (in `hostSession`/`joinSession`). |
+| ChannelOwnership channels | 5 slots: channelId 0 (crossfader), 1-4 (decks). Fixed-size vector, bounds-checked. |
+
 ## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
 
 | Decision | Value |

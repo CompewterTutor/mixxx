@@ -1,6 +1,7 @@
 #include "netmix/controlcapture.h"
 
 #include "control/controlproxy.h"
+#include "netmix/channelownership.h"
 #include "netmix/controlallowlist.h"
 #include "netmix/sessionclock.h"
 #include "util/logger.h"
@@ -68,6 +69,15 @@ void ControlCapture::onProxyValueChange(quint16 wireId, double value) {
     if (m_muted || !m_pClock) {
         return;
     }
+
+    // Ownership check: only capture events for locally-owned channels
+    if (m_pOwnership) {
+        auto channelId = ControlAllowlist::channelForWireId(wireId);
+        if (channelId.has_value() && !m_pOwnership->isOwnedByLocal(*channelId)) {
+            return;
+        }
+    }
+
     const quint32 tick = m_pClock->agreedTick();
     emit captured(tick, wireId, value);
 }

@@ -174,6 +174,14 @@ quint16 TcpSession::remoteUdpPort() const {
     return m_remoteUdpPort;
 }
 
+void TcpSession::setPreassignedChannels(const QVector<quint16>& channels) {
+    m_preassignedChannels = channels;
+}
+
+const QVector<quint16>& TcpSession::preassignedChannels() const {
+    return m_preassignedChannels;
+}
+
 QTcpServer* TcpSession::server() const {
     return m_pServer;
 }
@@ -297,6 +305,7 @@ void TcpSession::sendHello() {
     hello.tickRate = m_tickRate;
     hello.rollbackWindow = m_rollbackWindow;
     hello.udpPort = m_localUdpPort;
+    hello.preassignedChannels = m_preassignedChannels;
 
     NetmixMessage msg;
     msg.type = NetmixMessageType::Hello;
@@ -426,8 +435,11 @@ void TcpSession::handleHello(const NetmixHello& hello) {
 
     m_remoteName = hello.peerName;
     m_remoteUdpPort = hello.udpPort;
+    m_remotePreassignedChannels = hello.preassignedChannels;
+    m_remotePeerId = (m_selfPeerId == 0) ? 1 : 0;
 
     emit helloReceived(m_remoteUdpPort, m_remoteName);
+    emit helloComplete(m_remotePeerId, m_remotePreassignedChannels);
 
     // Only send HelloAck if we have a live socket (not injectReceivedData path)
     if (!activeSocket()) {
@@ -440,6 +452,7 @@ void TcpSession::handleHello(const NetmixHello& hello) {
     ack.peerId = (m_selfPeerId == 0) ? 1 : 0;
     ack.tickRate = hello.tickRate;
     ack.rollbackWindow = hello.rollbackWindow;
+    ack.preassignedChannels = m_preassignedChannels;
 
     NetmixMessage msg;
     msg.type = NetmixMessageType::HelloAck;
@@ -451,8 +464,10 @@ void TcpSession::handleHelloAck(const NetmixHelloAck& ack) {
     // ack.peerId confirms the assigned peerId of the receiver (reflected in memory.md).
     // The remote peer is always the other role, derived from selfPeerId.
     m_remotePeerId = (m_selfPeerId == 0) ? 1 : 0;
+    m_remotePreassignedChannels = ack.preassignedChannels;
 
     emit helloAckReceived(ack.initiatorTick);
+    emit helloComplete(m_remotePeerId, m_remotePreassignedChannels);
 
     if (m_state == Handshaking) {
         setState(Connected);

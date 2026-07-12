@@ -24,6 +24,7 @@ class ControlAllowlist {
     static std::optional<quint16> wireIdForKey(const ConfigKey& key);
     static std::optional<ConfigKey> keyForWireId(quint16 wireId);
     static std::optional<ControlKind> kindForWireId(quint16 wireId);
+    static std::optional<quint16> channelForWireId(quint16 wireId);
 
   private:
     static const QVector<AllowlistEntry>& buildTable();

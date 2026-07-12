@@ -201,3 +201,16 @@ std::optional<ControlKind> ControlAllowlist::kindForWireId(quint16 wireId) {
     }
     return std::nullopt;
 }
+
+std::optional<quint16> ControlAllowlist::channelForWireId(quint16 wireId) {
+    buildTable();
+    // Per-deck wireIds: stride of 4 per deck, channel = ((wireId-1) % 4) + 1
+    // Crossfader (wireId 73) → channelId 0
+    if (wireId == kGlobalCrossfader) {
+        return quint16(0);
+    }
+    if (wireId >= 1 && wireId <= 72) {
+        return static_cast<quint16>(((wireId - 1) % kDeckStride) + 1);
+    }
+    return std::nullopt;
+}
