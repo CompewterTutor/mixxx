@@ -17,6 +17,8 @@ TEST_F(NetmixProtocolTest, RoundTrip_Hello) {
     NetmixHello payload;
     payload.peerProtocolVersion = 1;
     payload.peerName = QStringLiteral("alice");
+    payload.tickRate = 480;
+    payload.rollbackWindow = 16;
 
     NetmixMessage msg{NetmixMessageType::Hello, payload};
     QByteArray wire = encodeMessage(msg);
@@ -28,6 +30,8 @@ TEST_F(NetmixProtocolTest, RoundTrip_Hello) {
     ASSERT_NE(nullptr, p);
     EXPECT_EQ(1, p->peerProtocolVersion);
     EXPECT_EQ(QStringLiteral("alice"), p->peerName);
+    EXPECT_EQ(480, p->tickRate);
+    EXPECT_EQ(16, p->rollbackWindow);
 }
 
 TEST_F(NetmixProtocolTest, RoundTrip_HelloAck) {
@@ -35,6 +39,8 @@ TEST_F(NetmixProtocolTest, RoundTrip_HelloAck) {
     payload.peerProtocolVersion = 1;
     payload.peerName = QStringLiteral("bob");
     payload.peerId = 7;
+    payload.tickRate = 240;
+    payload.rollbackWindow = 8;
 
     NetmixMessage msg{NetmixMessageType::HelloAck, payload};
     auto decoded = decodeMessage(encodeMessage(msg));
@@ -46,6 +52,8 @@ TEST_F(NetmixProtocolTest, RoundTrip_HelloAck) {
     EXPECT_EQ(1, p->peerProtocolVersion);
     EXPECT_EQ(QStringLiteral("bob"), p->peerName);
     EXPECT_EQ(7, p->peerId);
+    EXPECT_EQ(240, p->tickRate);
+    EXPECT_EQ(8, p->rollbackWindow);
 }
 
 TEST_F(NetmixProtocolTest, RoundTrip_Ping) {

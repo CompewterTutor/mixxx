@@ -106,7 +106,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.3 — Transport: TCP Session + UDP Input + Clock Sync
 
-- [ ] `1.3.1` TCP session channel — listen, connect, handshake, heartbeat
+- [x] `1.3.1` TCP session channel — listen, connect, handshake, heartbeat
   - **Goal:** `src/netmix/tcpsession.h/.cpp`: QTcpServer listen on configurable port (default 21200); QTcpSocket connect to peer IP/port. Hello/HelloAck handshake carries protocol version + peer display name + session parameters (tick rate, rollback window); version mismatch → clean reject. Length-prefixed framing over the socket using protocol.h codecs. Heartbeat + dead-peer detection (no traffic 5 s → Degraded, 15 s → Disconnected). All in Qt event loop thread — never the audio thread.
   - **Touches:** `src/netmix/tcpsession.h`, `src/netmix/tcpsession.cpp`, `CMakeLists.txt`, `src/test/netmixtcpsession_test.cpp`
   - **Success:** Two in-process instances (loopback) complete handshake and exchange messages; version mismatch rejected; teardown clean.

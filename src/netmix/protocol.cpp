@@ -39,12 +39,16 @@ QDataStream& operator>>(QDataStream& stream, NetmixProtocolHeader& header) {
 QDataStream& operator<<(QDataStream& stream, const NetmixHello& msg) {
     stream << msg.peerProtocolVersion;
     stream << msg.peerName;
+    stream << msg.tickRate;
+    stream << msg.rollbackWindow;
     return stream;
 }
 
 QDataStream& operator>>(QDataStream& stream, NetmixHello& msg) {
     stream >> msg.peerProtocolVersion;
     stream >> msg.peerName;
+    stream >> msg.tickRate;
+    stream >> msg.rollbackWindow;
     return stream;
 }
 
@@ -56,6 +60,8 @@ QDataStream& operator<<(QDataStream& stream, const NetmixHelloAck& msg) {
     stream << msg.peerProtocolVersion;
     stream << msg.peerName;
     stream << msg.peerId;
+    stream << msg.tickRate;
+    stream << msg.rollbackWindow;
     return stream;
 }
 
@@ -63,6 +69,8 @@ QDataStream& operator>>(QDataStream& stream, NetmixHelloAck& msg) {
     stream >> msg.peerProtocolVersion;
     stream >> msg.peerName;
     stream >> msg.peerId;
+    stream >> msg.tickRate;
+    stream >> msg.rollbackWindow;
     return stream;
 }
 
