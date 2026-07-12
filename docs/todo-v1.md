@@ -18,7 +18,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.1 — Scaffold, Protocol, Session Clock
 
-- [ ] `1.1.1` Create `src/netmix/` module skeleton and CMake wiring
+- [x] `1.1.1` Create `src/netmix/` module skeleton and CMake wiring
   - **Goal:** New directory `src/netmix/` with `netmixsessionmanager.h/.cpp` stub class (QObject, no logic), registered in root `CMakeLists.txt` alongside the other library sources. Builds clean.
   - **Touches:** `src/netmix/netmixsessionmanager.h`, `src/netmix/netmixsessionmanager.cpp`, `CMakeLists.txt`
   - **Success:** `cmake --build build --target mixxx-test` succeeds with the new files compiled.
