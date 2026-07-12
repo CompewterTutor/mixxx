@@ -2924,6 +2924,7 @@ if(BUILD_TESTING)
     src/test/netmixtcpsession_test.cpp
     src/test/netmixudpchannel_test.cpp
     src/test/netmixclocksync_test.cpp
+    src/test/netmixsession_test.cpp
     src/test/fileinfo_test.cpp
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp

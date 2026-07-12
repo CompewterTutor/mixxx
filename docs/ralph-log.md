@@ -34,3 +34,7 @@ DONE: 1.3.1 merged into release/1.3.
 ## 2026-07-12 14:08
 
 DONE: 1.3.2 merged into release/1.3.
+
+## 2026-07-12 14:24
+
+DONE: 1.3.3 merged into release/1.3.

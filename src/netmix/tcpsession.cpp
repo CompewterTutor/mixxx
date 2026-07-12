@@ -158,6 +158,22 @@ QString TcpSession::remoteName() const {
     return m_remoteName;
 }
 
+QHostAddress TcpSession::peerAddress() const {
+    return m_peerAddress;
+}
+
+void TcpSession::setLocalUdpPort(quint16 port) {
+    m_localUdpPort = port;
+}
+
+quint16 TcpSession::localUdpPort() const {
+    return m_localUdpPort;
+}
+
+quint16 TcpSession::remoteUdpPort() const {
+    return m_remoteUdpPort;
+}
+
 QTcpServer* TcpSession::server() const {
     return m_pServer;
 }
@@ -190,6 +206,7 @@ void TcpSession::onNewConnection() {
 
     m_pSocket = clientSocket;
     m_pSocket->setParent(this);
+    m_peerAddress = m_pSocket->peerAddress();
     connect(m_pSocket, &QTcpSocket::readyRead, this, &TcpSession::onReadyRead);
     connect(m_pSocket, &QTcpSocket::disconnected, this, &TcpSession::onDisconnected);
 
@@ -279,6 +296,7 @@ void TcpSession::sendHello() {
     hello.peerName = m_displayName;
     hello.tickRate = m_tickRate;
     hello.rollbackWindow = m_rollbackWindow;
+    hello.udpPort = m_localUdpPort;
 
     NetmixMessage msg;
     msg.type = NetmixMessageType::Hello;
@@ -407,6 +425,9 @@ void TcpSession::handleHello(const NetmixHello& hello) {
     }
 
     m_remoteName = hello.peerName;
+    m_remoteUdpPort = hello.udpPort;
+
+    emit helloReceived(m_remoteUdpPort, m_remoteName);
 
     // Only send HelloAck if we have a live socket (not injectReceivedData path)
     if (!activeSocket()) {
@@ -427,10 +448,11 @@ void TcpSession::handleHello(const NetmixHello& hello) {
 }
 
 void TcpSession::handleHelloAck(const NetmixHelloAck& ack) {
-    Q_UNUSED(ack);
     // ack.peerId confirms the assigned peerId of the receiver (reflected in memory.md).
     // The remote peer is always the other role, derived from selfPeerId.
     m_remotePeerId = (m_selfPeerId == 0) ? 1 : 0;
+
+    emit helloAckReceived(ack.initiatorTick);
 
     if (m_state == Handshaking) {
         setState(Connected);

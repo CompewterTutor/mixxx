@@ -124,3 +124,13 @@
 | framesForSend | Returns up to `batchSize` most recently finalized frames, newest first. Walks ring buffer backward.|
 | Size guard | 4 ticks × 20 events each → total encoded batch under 1200 bytes (test-enforced). |
 | Clear | Resets all slots and head index. |
+
+## 2026-07-12: Session State Machine Wired (Task 1.3.4)
+
+| Decision | Value |
+|---|---|
+| ClockSync deferred from 1.3.4 | ClockSync::start fails on macOS when binding same UDP port as UdpChannel (`SO_REUSEPORT` not exposed by Qt). ClockSync creation removed from `NetmixSessionManager::onTcpConnected`. Will be re-added in phase 1.4/1.5 when port-sharing solution is implemented (single shared socket or platform-specific `SO_REUSEPORT`). |
+| Sub-component deletion | Use `deleteLater()` + immediate pointer nulling + `disconnect(this)` before deletion to avoid recursion through signal emission (e.g., TcpSession emits `stateChanged(Disconnected)` → manager deletes TcpSession while still inside its `setState` stack frame). |
+| Protocol version bumped | `kNetmixProtocolVersion` = 3 for `udpPort` field in `NetmixHello`. |
+| `udpPort` in Hello | Both peers advertise their UDP listener port in `NetmixHello.udpPort`. Host uses this to learn client's UDP port (which is auto-assigned). Client assumes host's UDP port == host's TCP port (both listen on same port). |
+| Runtime gate | `setEnabled(bool)` flag (no `#ifdef`). When disabled, `hostSession`/`joinSession` return immediately without changing state. |

@@ -46,6 +46,12 @@ class TcpSession : public QObject {
     quint8 selfPeerId() const;
     quint8 remotePeerId() const;
     QString remoteName() const;
+    QHostAddress peerAddress() const;
+
+    // UDP port plumbing
+    void setLocalUdpPort(quint16 port);
+    quint16 localUdpPort() const;
+    quint16 remoteUdpPort() const;
 
     // Test helpers
     QTcpServer* server() const;
@@ -55,6 +61,8 @@ class TcpSession : public QObject {
     void stateChanged(TcpSession::State newState);
     void messageReceived(const NetmixMessage& msg);
     void peerDisconnected();
+    void helloReceived(quint16 udpPort, QString peerName);
+    void helloAckReceived(quint32 initiatorTick);
 
   private slots:
     void onNewConnection();
@@ -90,6 +98,10 @@ class TcpSession : public QObject {
     // Timeouts (ms)
     int m_degradedTimeoutMs = 5000;
     int m_disconnectTimeoutMs = 15000;
+
+    // UDP port plumbing
+    quint16 m_localUdpPort = 0;
+    quint16 m_remoteUdpPort = 0;
 
     // State
     State m_state = Disconnected;

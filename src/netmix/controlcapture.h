@@ -17,6 +17,9 @@ class ControlCapture : public QObject {
     void start(const SessionClock* clock);
     void stop();
 
+    void setMuted(bool muted) { m_muted = muted; }
+    bool isMuted() const { return m_muted; }
+
     const QVector<ControlProxy*>& proxies() const { return m_proxies; }
 
   signals:
@@ -25,6 +28,7 @@ class ControlCapture : public QObject {
   private:
     void onProxyValueChange(quint16 wireId, double value);
 
+    bool m_muted = false;
     const SessionClock* m_pClock = nullptr;
     QVector<ControlProxy*> m_proxies;
     QVector<AllowlistEntry> m_entries;

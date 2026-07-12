@@ -130,7 +130,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.3.4` Session state machine wired into NetmixSessionManager
+- [x] `1.3.4` Session state machine wired into NetmixSessionManager
   - **Goal:** Compose 1.3.1–1.3.3 into `NetmixSessionManager`: `hostSession(port)` / `joinSession(ip, port)` / `leaveSession()`; state transitions Idle→Connecting→Connected→Degraded→Idle drive signals and the status CO; capture→pack→UDP send and UDP recv→(buffer for phase 1.4) plumbing connected end to end behind a `#ifdef`-free runtime flag.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/test/netmixsession_test.cpp`, `CMakeLists.txt`
   - **Success:** Loopback end-to-end: control change on instance A arrives as decoded InputFrame on instance B.

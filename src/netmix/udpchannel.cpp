@@ -23,7 +23,8 @@ bool UdpChannel::bind(quint16 port) {
     }
 
     m_pSocket = new QUdpSocket(this);
-    if (!m_pSocket->bind(QHostAddress::Any, port)) {
+    if (!m_pSocket->bind(QHostAddress::Any, port,
+                QAbstractSocket::ShareAddress | QAbstractSocket::ReuseAddressHint)) {
         qWarning("[Netmix] UdpChannel::bind failed on port %u: %s",
                 port, qPrintable(m_pSocket->errorString()));
         delete m_pSocket;
