@@ -160,6 +160,23 @@
 | No thread safety | InputBuffer lives in Qt thread (same as Capture/Applier). No locks. Not accessed from audio callback. |
 | Event limit | `kMaxEventsPerTick = 32` (duplicated from `InputFramePacker`). Events truncated to this count on insert. |
 
+## 2026-07-12: RollbackEngine (Task 1.4.3)
+
+| Decision | Value |
+|---|---|
+| Snapshot storage | Ring buffer of `m_windowSize` entries. Each entry is `QVector<double>` sized to `m_proxies.size()` (number of allowlist entries). Indexed by `tick % m_windowSize`. |
+| Window | Default 8 ticks, max 30 (from `kDefaultWindow`/`kMaxWindow`). Set via `setWindowSize()`, which clears existing snapshots. |
+| Snapshot proxies | RollbackEngine creates its own `ControlProxy` instances (one per allowlist entry) for reading CO values at snapshot time. Owns them via Qt parent chain (`this`). |
+| Rollback trigger | `onTick()` takes snapshot then checks `InputBuffer::firstDivergentTick()`. If divergence within window, restores snapshot at T-1, re-applies confirmed remote + local from T..now, predicts unconfirmed tail via `PredictionStrategy`. |
+| Window exceeded | Divergent tick older than `currentTick - windowSize`: logs once (`qWarning` with `[Netmix]` prefix), counts, emits `windowExceeded(tick)`, applies the confirmed frame directly (forward correction only, no rollback). |
+| Re-simulation apply | All value changes during re-simulation go through `ControlApplier::apply()`, which shares proxy instances with `ControlCapture` — echo suppression automatically filters rollback inputs from capture output. |
+| Apply order per tick | Confirmed remote first, then local (local overrides remote for same wireId within a tick). Then prediction for unconfirmed ticks. |
+| Snapshot recovery | If exact snapshot for T-1 isn't found (ring wrap), scans all slots for the closest snapshot at or before T-1. If none found — logs warning and skips rollback. |
+| No clock dependency | RollbackEngine does NOT own or use SessionClock. Ticks come from the caller (session manager). Snapshotring is self-contained. |
+| Tear-down | `qDeleteAll(m_proxies)` in destructor (Qt parented, but explicit for test cleanliness). |
+| Stats | `rollbackCount()` and `windowExceededCount()` exposed for monitoring. |
+| Signals | `rollbackPerformed(quint32 fromTick, quint32 toTick)` and `windowExceeded(quint32 tick)` for session manager / UI monitoring. |
+
 ## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
 
 | Decision | Value |

@@ -166,7 +166,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Low
   - **Model:** Standard
 
-- [ ] `1.4.3` RollbackEngine — snapshot, rollback, re-simulate
+- [x] `1.4.3` RollbackEngine — snapshot, rollback, re-simulate
   - **Goal:** `src/netmix/rollbackengine.h/.cpp`: per-tick snapshot of synced control state (map wireId→double, plus last-applied discrete event ids) into a ring covering the rollback window (default 8 ticks, max 30, from session params). On confirmed input diverging from prediction at tick T ≥ now−window: restore snapshot(T−1), re-apply confirmed remote + recorded local input from T..now via ControlApplier, re-predict the still-unconfirmed tail. Input older than the window: log, count, apply-forward only (no rollback) — bounded correction like GGPO. Runs in Qt thread on tick boundary; never touches audio thread directly.
   - **Touches:** `src/netmix/rollbackengine.h`, `src/netmix/rollbackengine.cpp`, `CMakeLists.txt`, `src/test/netmixrollback_test.cpp`
   - **Success:** Scripted scenarios (late fader move, late play press, conflicting prediction) end with identical final control state as a zero-latency reference run.

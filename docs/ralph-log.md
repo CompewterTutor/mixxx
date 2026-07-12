@@ -54,3 +54,7 @@ PHASE_COMPLETE: 1.3 merged to feat/rollback-network-mixing after review approval
 ## 2026-07-12 15:22
 
 DONE: 1.4.1 merged into release/1.4.
+
+## 2026-07-12 15:35
+
+DONE: 1.4.2 merged into release/1.4.
