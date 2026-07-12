@@ -1534,6 +1534,7 @@ add_library(
   src/netmix/controlapplier.cpp
   src/netmix/inputframe.cpp
   src/netmix/tcpsession.cpp
+  src/netmix/udpchannel.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditormodel.cpp
@@ -2920,6 +2921,7 @@ if(BUILD_TESTING)
     src/test/netmixapplier_test.cpp
     src/test/netmixinputframe_test.cpp
     src/test/netmixtcpsession_test.cpp
+    src/test/netmixudpchannel_test.cpp
     src/test/fileinfo_test.cpp
     src/test/frametest.cpp
     src/test/globaltrackcache_test.cpp

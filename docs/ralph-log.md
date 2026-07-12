@@ -26,3 +26,7 @@ DONE: 1.1.5 merged into release/1.1.
 ## 2026-07-12 10:37
 
 All 1.1 tasks complete. Starting phase review.
+
+## 2026-07-12 13:56
+
+DONE: 1.3.1 merged into release/1.3.

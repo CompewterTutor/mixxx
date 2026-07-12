@@ -114,7 +114,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.3.2` UDP input channel — datagram send/recv with sequencing
+- [x] `1.3.2` UDP input channel — datagram send/recv with sequencing
   - **Goal:** `src/netmix/udpchannel.h/.cpp`: QUdpSocket bound alongside the TCP port; sends InputFrame batches (from 1.2.4) with monotonically increasing sequence numbers; receiver drops duplicates/stale-older-than-window, tolerates reordering. Stats counters (sent, received, dropped, out-of-order) exposed for UI/diagnostics.
   - **Touches:** `src/netmix/udpchannel.h`, `src/netmix/udpchannel.cpp`, `CMakeLists.txt`, `src/test/netmixudpchannel_test.cpp`
   - **Success:** Loopback pair exchanges frames; artificially reordered/duplicated datagrams handled per spec; stats accurate.
