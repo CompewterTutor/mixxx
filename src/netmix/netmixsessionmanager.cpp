@@ -456,27 +456,29 @@ void NetmixSessionManager::notifyTrackLoaded(int channelId,
             static_cast<quint16>(channelId));
 
     // Extract and send cue snapshot from the local track
-    QString group = PlayerManager::groupForDeck(channelId - 1);
-    BaseTrackPlayer* pPlayer = m_pPlayerManager->getPlayer(group);
-    if (pPlayer) {
-        TrackPointer pTrack = pPlayer->getLoadedTrack();
-        if (pTrack) {
-            QList<CuePointer> cues = pTrack->getCuePoints();
-            QVector<NetmixCueSnapshotEntry> entries;
-            entries.reserve(static_cast<int>(cues.size()));
-            for (const auto& pCue : cues) {
-                NetmixCueSnapshotEntry entry;
-                entry.type = static_cast<quint16>(pCue->getType());
-                entry.hotcueIndex = pCue->getHotCue();
-                entry.startPositionSamples =
-                        pCue->getPosition().toEngineSamplePosMaybeInvalid();
-                entry.endPositionSamples =
-                        pCue->getEndPosition().toEngineSamplePosMaybeInvalid();
-                entry.color = static_cast<quint32>(pCue->getColor());
-                entry.label = pCue->getLabel();
-                entries.append(entry);
+    if (m_pPlayerManager) {
+        QString group = PlayerManager::groupForDeck(channelId - 1);
+        BaseTrackPlayer* pPlayer = m_pPlayerManager->getPlayer(group);
+        if (pPlayer) {
+            TrackPointer pTrack = pPlayer->getLoadedTrack();
+            if (pTrack) {
+                QList<CuePointer> cues = pTrack->getCuePoints();
+                QVector<NetmixCueSnapshotEntry> entries;
+                entries.reserve(static_cast<int>(cues.size()));
+                for (const auto& pCue : cues) {
+                    NetmixCueSnapshotEntry entry;
+                    entry.type = static_cast<quint16>(pCue->getType());
+                    entry.hotcueIndex = pCue->getHotCue();
+                    entry.startPositionSamples =
+                            pCue->getPosition().toEngineSamplePosMaybeInvalid();
+                    entry.endPositionSamples =
+                            pCue->getEndPosition().toEngineSamplePosMaybeInvalid();
+                    entry.color = static_cast<quint32>(pCue->getColor());
+                    entry.label = pCue->getLabel();
+                    entries.append(entry);
+                }
+                m_pTrackTransfer->sendCueSnapshot(hash, entries);
             }
-            m_pTrackTransfer->sendCueSnapshot(hash, entries);
         }
     }
 
