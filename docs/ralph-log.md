@@ -38,3 +38,11 @@ DONE: 1.3.2 merged into release/1.3.
 ## 2026-07-12 14:24
 
 DONE: 1.3.3 merged into release/1.3.
+
+## 2026-07-12 15:08
+
+DONE: 1.3.5 merged into release/1.3.
+
+## 2026-07-12 15:08
+
+All 1.3 tasks complete. Starting phase review.
