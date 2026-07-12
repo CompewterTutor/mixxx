@@ -240,6 +240,23 @@
 | Hold-last algorithm | For ticks with a confirmed remote frame: return it as-is. For ticks without: search backward up to `kDefaultCapacity` ticks, find the most recent confirmed frame, copy only `ControlKind::Continuous` events (volume/pregain/filter/crossfader). Discrete/seek events NOT carried forward — they fire once and don't hold. |
 | InputBuffer API extension | `isRemoteConfirmed(tick)` added to `InputBuffer` (was missing from 1.4.1). Returns true only if slot is occupied, tick matches, AND `confirmed` flag is set. Required by prediction to distinguish confirmed data from previously-predicted frames during re-simulation. Without this, re-prediction after a rollback would return stale predicted frames with outdated last-known values. |
 
+## 2026-07-12: TrackTransfer Chunked File Transfer (Task 1.6.2)
+
+| Decision | Value |
+|---|---|
+| TrackTransfer ownership | Takes `TcpSession*` and `TrackCache*` as non-owning pointers. Parented to session manager (or test). |
+| Signal routing | Connects to `TcpSession::messageReceived` in constructor. All track message types routed internally via switch. |
+| Partial file naming | `<hash>.<ext>.partial` inside cache dir. Extension derived from mime type via `mimeToExt()`. |
+| Verify-then-rename | After TrackComplete, receiver computes SHA-256 of .partial. Pass → rename to `<hash>.<ext>`, insert into TrackCache, send TrackReady. Fail → delete .partial, reset IncomingTransfer (keep map entry), send TrackAccept{hash, 0} to restart. |
+| Batch sender | Sends up to 4 chunks (64 KiB each) per `sendNextBatch()`. After each batch, if more data remains, schedules `QTimer::singleShot(0)` to yield event loop for pending control messages. |
+| Chunk read size | `kChunkSize = 65536` (64 KiB). |
+| Max chunks per batch | `kMaxChunksPerBatch = 4`. Bounded: at most 4 chunks pending at once. |
+| Resume | Outgoing: sender seeks to `haveBytes` from TrackAccept. Incoming: receiver opens .partial in Append mode, sets `bytesReceived = haveBytes`. Both sides agree on `haveBytes` as the first byte not yet received. |
+| Hash format | Protocol uses `QByteArray` (32 raw bytes). Cache uses `QString` (64 hex chars). Convert via `toHex()`/`fromHex()`. |
+| Cache insertion post-transfer | After verify and rename, calls `m_pCache->insert(finalPath)` which detects existing file (skips copy), adds entry to index. |
+| CancelAll | Closes all file handles, removes partial files, clears both transfer maps. |
+| No protocol changes | All six track message structs (TrackOffer, TrackAccept, TrackChunk, TrackComplete, TrackReady) existed from Task 1.1.2 with full serialization. |
+
 ## 2026-07-12: TrackCache Directory & Index (Task 1.6.1)
 
 | Decision | Value |
