@@ -189,6 +189,21 @@
 | Window-exceeded path | No ramp — forward correction still uses `apply()` (snap). Acceptable — late-arriving packets outside window are rare. |
 | Existing tests | Updated to expect ramp baseline (0.0) after rollback instead of immediate snap value. New ramp-specific tests added. |
 
+## 2026-07-12: Optional 64th-Note Quantizer (Task 1.4.5)
+
+| Decision | Value |
+|---|---|
+| 64th-grid formula | `tpg = tickRate * 60.0 / (bpm * 16.0)` — one 64th note = 1/16 quarter note. Snapped = `qRound(tick / tpg) * tpg + 0.5` truncated to `quint32`. |
+| Enabled by `[Netmix],quantize` CO | CO created in ctor (default 0 = off). `valueChanged` → `setEnabled(value > 0.5)` in `onTcpConnected`. |
+| BPM source | `[InternalClock], bpm` via `ControlProxy` created alongside quantizer in `onTcpConnected`. Read per-tick, safe (no lock, just `get()`). |
+| BPM guard | `bpm <= 0.0` → passthrough. Safe against uninitialized clock. |
+| Disabled passthrough | `m_enabled == false` → byte-identical `return tick`. |
+| Symmetry | Both peers compute snap independently from same BPM. No wire format change. |
+| Snapped tick in send path | `onTickAdvanced` snaps tick before `finishTick`. |
+| Snapped tick in recv path | `onInputFrameReceived` snaps `baseTick` (consumed when InputBuffer is wired later). |
+| Continuous values | Snap only touches tick, never value (no value parameter in `snap()`). |
+| Audio-callback purity | Quantizer runs only in Qt thread (same as session manager). No locks, no allocations. |
+
 ## 2026-07-12: Prediction Hold-Last (Task 1.4.2)
 
 | Decision | Value |

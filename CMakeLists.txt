@@ -1538,6 +1538,7 @@ add_library(
   src/netmix/udpchannel.cpp
   src/netmix/clocksync.cpp
   src/netmix/prediction.cpp
+  src/netmix/quantizer.cpp
   src/netmix/rollbackengine.cpp
   src/preferences/colorpaletteeditor.cpp
   src/preferences/colorpaletteeditor.cpp
@@ -2930,6 +2931,7 @@ if(BUILD_TESTING)
     src/test/netmixclocksync_test.cpp
     src/test/netmixsession_test.cpp
   src/test/netmixprediction_test.cpp
+  src/test/netmixquantizer_test.cpp
   src/test/netmixrollback_test.cpp
   src/test/fileinfo_test.cpp
     src/test/frametest.cpp
