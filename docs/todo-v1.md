@@ -174,7 +174,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** High
   - **Model:** Standard
 
-- [ ] `1.4.4` Interpolation reconciliation for continuous controls
+- [x] `1.4.4` Interpolation reconciliation for continuous controls
   - **Goal:** After a rollback correction, continuous controls must not snap: route corrections through `ControlApplier::applyRamped` over `min(correction_magnitude-scaled, 4) ticks`; discrete controls re-fire exact. Ramp cancellation: a newer correction or fresh confirmed input on the same control supersedes an in-flight ramp.
   - **Touches:** `src/netmix/rollbackengine.h/.cpp`, `src/netmix/controlapplier.h/.cpp`, `src/test/netmixrollback_test.cpp`
   - **Success:** Corrected fader path is continuous (no inter-tick jump larger than ramp step) while converging to reference final value.
