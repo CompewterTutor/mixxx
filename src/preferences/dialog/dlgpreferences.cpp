@@ -42,6 +42,7 @@
 
 #include "preferences/dialog/dlgprefbeats.h"
 #include "preferences/dialog/dlgprefkey.h"
+#include "preferences/dialog/dlgprefnetmix.h"
 #include "preferences/dialog/dlgprefrecord.h"
 #include "preferences/dialog/dlgprefreplaygain.h"
 
@@ -247,6 +248,12 @@ DlgPreferences::DlgPreferences(
             tr("Modplug Decoder"),
             "ic_preferences_modplug.svg");
 #endif // __MODPLUG__
+
+    addPageWidget(PreferencesPage(
+                          new DlgPrefNetmix(this, m_pConfig),
+                          new QTreeWidgetItem(contentsTreeWidget, QTreeWidgetItem::Type)),
+            tr("Net Mix"),
+            "ic_preferences_netmix.svg");
 
     // Find accept and apply buttons
     const auto buttons = buttonBox->buttons();

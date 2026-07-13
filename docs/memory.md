@@ -1,5 +1,18 @@
 # Netmix — Cross-Cutting Decisions
 
+## 2026-07-12: DlgPrefNetmix Preferences Page (Task 1.7.2)
+
+| Decision | Value |
+|---|---|
+| Config group | `[Netmix]` — keys: `Port` (int), `DisplayName` (string), `RollbackWindow` (int), `QuantizeEnabled` (bool) |
+| Default port | 21200 (matches TcpSession default) |
+| Default rollback window | 8 ticks (matches RollbackEngine default) |
+| Default quantize | Off |
+| Cache dir | `<settingsPath>/netmix_cache/` — computed from `ConfigObject::getSettingsPath()` |
+| Cache clear | `QDir::removeRecursively()` + `mkpath` to re-create empty dir |
+| Icon | `ic_preferences_netmix.svg` — three-node network glyph in light (white) and dark (#0f0f0f) themes |
+| UI registration | Alphabetically between Modplug and Record blocks in `DlgPreferences` constructor. No `#ifdef` guard — always compiled, like `DlgPrefRecord`/`DlgPrefDeck` (unlike `DlgPrefBroadcast` which is `__BROADCAST__`-gated). |
+
 ## 2026-07-12: SessionClock Tick Math (Task 1.1.3)
 
 | Decision | Value |

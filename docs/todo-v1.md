@@ -297,7 +297,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.7.2` Preferences page DlgPrefNetmix
+- [x] `1.7.2` Preferences page DlgPrefNetmix
   - **Goal:** `src/preferences/dialog/dlgprefnetmix.h/.cpp/.ui` registered in `DlgPreferences` constructor (`src/preferences/dialog/dlgpreferences.cpp:107` area): listen port, default display name, rollback window (ticks), quantize-to-64ths default toggle, cache directory display + size + clear button. Persists via UserSettings.
   - **Touches:** `src/preferences/dialog/dlgprefnetmix.h/.cpp/.ui`, `src/preferences/dialog/dlgpreferences.cpp`, `CMakeLists.txt`
   - **Success:** Settings round-trip through apply/cancel/reset-to-defaults; values consumed by NetmixSessionManager at next session start.
