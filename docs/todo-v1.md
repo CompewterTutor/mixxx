@@ -277,7 +277,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.6.6` Phase merge: release/1.6 → feat/rollback-network-mixing
+- [x] `1.6.6` Phase merge: release/1.6 → feat/rollback-network-mixing
   - **Goal:** Phase review passes, branch merges cleanly into the trunk.
   - **Touches:** todo-v1.md checkboxes
   - **Success:** All 1.6.x tasks checked; review returns PHASE_APPROVED.

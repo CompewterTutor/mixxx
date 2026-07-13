@@ -311,3 +311,17 @@
 | `loadCachedTrack` | Removes hash from map at call site (caller removes). Sets `m_localTrackLoaded[ch] = true` and `m_remoteReady[ch] = true` (receiver assumes sender ready). Calls `updateGating(ch)`. |
 | Receiver ready semantics | On receiver, `m_remoteReady[ch]` set to true when track received (sender implicitly has the track). Receiver-side gating becomes ready once track is loaded locally. |
 | Teardown | `leaveSession` / `deleteSubComponents` resets all ready COs to 0.0, unmutes all channels (mute=0.0), clears incoming map. Ready COs NOT deleted between sessions (reused). |
+
+## 2026-07-12: Phase Merge 1.6 (Task 1.6.6)
+
+| Decision | Value |
+|---|---|
+| Merge commit | `ec9788de1e` on `feat/rollback-network-mixing` |
+| Strategy | `--no-ff` (branch history preserved) |
+| Source | `release/1.6` (16 commits: tasks 1.6.1–1.6.5 plus merge/doc/fix commits) |
+| Pre-merge gate | `ctest -R Netmix`: 171/171 pass |
+| Post-merge gate | `ctest -R Netmix`: 171/171 pass |
+| Trunk tree after merge | Identical to `release/1.6` (diff empty) |
+| Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.7. |
+| Bug fix during pre-merge | `notifyTrackLoaded` segfaulted when `m_pPlayerManager` was null (test path). Added null guard before `m_pPlayerManager->getPlayer()`. |
+| Phase 1.7 next | Begin on `task-1.7.1` off `release/1.7` (created from trunk after this merge) |
