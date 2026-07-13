@@ -313,7 +313,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Low
   - **Model:** Standard
 
-- [ ] `1.7.4` Phase merge: release/1.7 → feat/rollback-network-mixing
+- [x] `1.7.4` Phase merge: release/1.7 → feat/rollback-network-mixing
   - **Goal:** Phase review passes, branch merges cleanly into the trunk. v1 complete.
   - **Touches:** todo-v1.md checkboxes
   - **Success:** All 1.7.x tasks checked; review returns PHASE_APPROVED; full manual smoke per `docs/netmix-manual-test.md` documented.

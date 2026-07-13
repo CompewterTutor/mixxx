@@ -351,6 +351,19 @@
 | Phase 1.7 next | Begin on `task-1.7.1` off `release/1.7` (created from trunk after this merge) |
 | Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.7. |
 
+## 2026-07-12: Phase Merge 1.7 (Task 1.7.4)
+
+| Decision | Value |
+|---|---|
+| Merge commit | `469c5713c7` on `feat/rollback-network-mixing` |
+| Strategy | `--no-ff` (branch history preserved) |
+| Source | `release/1.7` (8 commits: tasks 1.7.1–1.7.3 plus merge/docs commits) |
+| Pre-merge gate | `ctest -R Netmix`: 174/174 pass |
+| Post-merge gate | `ctest -R Netmix`: 174/174 pass |
+| Trunk tree after merge | Identical to `release/1.7` (diff empty) |
+| Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.8 or 2.0. |
+| Phase 2.0 next | Begin on `task-2.0.1` off `release/2.0` (created from trunk after this merge) |
+
 ## 2026-07-12: Session Status COs (Task 1.7.3)
 
 | Decision | Value |
