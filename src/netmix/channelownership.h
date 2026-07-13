@@ -48,6 +48,9 @@ class ChannelOwnership : public QObject {
     bool canClaim(quint16 channelId) const;
     quint8 ownerPeerId(quint16 channelId) const;
 
+    // Display value mapping for COs: 0=local, 1=remote, 2=open
+    static quint8 ownershipToDisplayValue(OwnershipState state);
+
   signals:
     void claimRequested(quint16 channelId);
     void releaseRequested(quint16 channelId);

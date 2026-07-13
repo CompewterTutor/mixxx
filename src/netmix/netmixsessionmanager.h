@@ -77,6 +77,7 @@ class NetmixSessionManager : public QObject {
     void onInputFrameReceived(quint32 baseTick,
             QVector<NetmixInputFrameEvent> events);
     void onHelloComplete(quint8 peerId, const QVector<quint16>& remotePreassigned);
+    void onOwnershipChanged(quint16 channelId, OwnershipState state);
     void onTcpMessageReceived(const NetmixMessage& msg);
     void onTrackTransferComplete(const QString& hash);
     void onTrackTransferFailed(const QString& hash, const QString& reason);
@@ -136,6 +137,12 @@ class NetmixSessionManager : public QObject {
 
     // Pending cue snapshot data (receiver side, applied in loadCachedTrack)
     QHash<QString, QVector<NetmixCueSnapshotEntry>> m_pendingCueData;
+
+    // Session status COs (created in ctor, deleted in dtor)
+    ControlObject* m_pRttMsCO;
+    ControlObject* m_pRollbackCountCO;
+    ControlObject* m_pPeerConnectedCO;
+    QVector<ControlObject*> m_pDeckOwnerCOs;
 
     // Channel ownership
     ChannelOwnership* m_pChannelOwnership = nullptr;

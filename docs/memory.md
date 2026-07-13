@@ -349,3 +349,15 @@
 | Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.7. |
 | Bug fix during pre-merge | `notifyTrackLoaded` segfaulted when `m_pPlayerManager` was null (test path). Added null guard before `m_pPlayerManager->getPlayer()`. |
 | Phase 1.7 next | Begin on `task-1.7.1` off `release/1.7` (created from trunk after this merge) |
+| Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.7. |
+
+## 2026-07-12: Session Status COs (Task 1.7.3)
+
+| Decision | Value |
+|---|---|
+| netmix_owner encoding | `ownershipToDisplayValue()`: OwnedLocal→0, OwnedRemote→1, Unowned/PendingClaim→2. Internal `OwnershipState` enum differs from CO display value — skins read 0/1/2, not raw enum. |
+| Session status COs | Created in ctor with `setReadOnly()` + `forceSet(initial)`. Deleted in dtor (same pattern as `m_pStatusCO`). Three session-level (`[Netmix], rtt_ms/rollback_count/peer_connected`) and five per-channel (`[Channel0-4], netmix_owner`). |
+| rtt_ms update | `rttUpdated` signal wired to `m_pRttMsCO->forceSet()` in ctor. ClockSync emission deferred — CO reads 0.0 until ClockSync integration. |
+| rollback_count update | No increment source yet (RollbackEngine not wired). CO reads 0.0. Increment deferred to RollbackEngine integration. |
+| peer_connected update | Set to 1.0 in `onTcpStateChanged(Connected)`, 0.0 in `onTcpStateChanged(Disconnected)`. Also reset to 0.0 in `deleteSubComponents()`. |
+| netmix_owner update | `ownershipChanged` signal connected to `onOwnershipChanged` slot in `onTcpConnected()`. Reset to 2.0 in `deleteSubComponents()`. |
