@@ -289,7 +289,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.7 — UI: Connect Dialog, Preferences, Indicators
 
-- [ ] `1.7.1` DlgNetmixConnect dialog + main menu entry
+- [x] `1.7.1` DlgNetmixConnect dialog + main menu entry
   - **Goal:** `src/dialog/dlgnetmixconnect.h/.cpp/.ui` (pattern: `DlgAbout`, `src/dialog/dlgabout.cpp:13`): host-or-join choice, peer IP/port fields, display name, per-deck ownership pre-assignment combo (Local/Remote/Open), connect/disconnect button, live status + RTT label bound to NetmixSessionManager signals. Menu: `WMainMenuBar` signal `showNetmixConnect` (pattern `src/widget/wmainmenubar.cpp` showAbout) wired in `MixxxMainWindow` (`src/mixxxmainwindow.cpp:889` area).
   - **Touches:** `src/dialog/dlgnetmixconnect.h/.cpp/.ui`, `src/widget/wmainmenubar.h/.cpp`, `src/mixxxmainwindow.h/.cpp`, `CMakeLists.txt`
   - **Success:** Dialog opens from menu, drives host/join/leave on the manager, reflects state changes live.

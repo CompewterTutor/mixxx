@@ -1255,6 +1255,8 @@ add_library(
   src/database/schemamanager.cpp
   src/dialog/dlgabout.cpp
   src/dialog/dlgaboutdlg.ui
+  src/dialog/dlgnetmixconnect.cpp
+  src/dialog/dlgnetmixconnectdlg.ui
   src/dialog/dlgdevelopertools.cpp
   src/dialog/dlgdevelopertoolsdlg.ui
   src/dialog/dlgkeywheel.cpp

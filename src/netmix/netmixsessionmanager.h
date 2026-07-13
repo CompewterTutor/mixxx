@@ -40,6 +40,9 @@ class NetmixSessionManager : public QObject {
     void setEnabled(bool enabled);
     bool isEnabled() const { return m_enabled; }
 
+    void setDisplayName(const QString& name);
+    void setPreassignment(int channelId, int assign);
+
     void hostSession(quint16 port);
     void joinSession(const QHostAddress& address, quint16 port);
     void leaveSession();
@@ -66,6 +69,7 @@ class NetmixSessionManager : public QObject {
   signals:
     void sessionStateChanged(SessionState newState);
     void deckReady(int channelId);
+    void rttUpdated(double rttMs);
 
   private slots:
     void onTcpStateChanged(TcpSession::State ts);
@@ -91,6 +95,8 @@ class NetmixSessionManager : public QObject {
 
     SessionState m_state = Idle;
     bool m_enabled = false;
+    QString m_displayName;
+    QVector<quint16> m_preassignments;
     SessionClock m_sessionClock;
     ControlObject* m_pStatusCO;
 
