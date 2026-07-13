@@ -118,3 +118,7 @@ All 1.6 tasks complete. Starting phase review.
 ## 2026-07-12 20:31
 
 PHASE_COMPLETE: 1.6 merged to feat/rollback-network-mixing after review approval.
+
+## 2026-07-12 20:52
+
+DONE: 1.7.1 merged into release/1.7.
