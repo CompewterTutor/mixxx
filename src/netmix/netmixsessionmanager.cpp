@@ -20,7 +20,8 @@ const mixxx::Logger kLogger("NetmixSessionManager");
 NetmixSessionManager::NetmixSessionManager(QObject* parent)
         : QObject(parent),
           m_state(Idle),
-          m_enabled(false) {
+          m_enabled(false),
+          m_preassignments(5, 0) {
     m_pStatusCO = new ControlObject(ConfigKey("[Netmix]", "status"));
     m_pStatusCO->setReadOnly();
     m_pStatusCO->forceSet(static_cast<double>(Idle));
@@ -87,6 +88,18 @@ void NetmixSessionManager::setEnabled(bool enabled) {
     }
 }
 
+void NetmixSessionManager::setDisplayName(const QString& name) {
+    m_displayName = name;
+}
+
+void NetmixSessionManager::setPreassignment(int channelId, int assign) {
+    if (channelId < 0 || channelId >= 5) {
+        return;
+    }
+    m_preassignments[static_cast<qsizetype>(channelId)] =
+            static_cast<quint16>(qBound(0, assign, 2));
+}
+
 void NetmixSessionManager::hostSession(quint16 port) {
     if (m_state != Idle) {
         kLogger.warning() << "hostSession called but state is not Idle (current:"
@@ -99,8 +112,18 @@ void NetmixSessionManager::hostSession(quint16 port) {
     }
 
     m_pTcpSession = new TcpSession(this);
-    m_pTcpSession->setDisplayName(QStringLiteral("netmix-host"));
+    m_pTcpSession->setDisplayName(
+            m_displayName.isEmpty() ? QStringLiteral("netmix-host") : m_displayName);
     m_pTcpSession->setListenPort(port);
+
+    // Build preassigned channel list from m_preassignments
+    QVector<quint16> preassigned;
+    for (int i = 0; i < m_preassignments.size(); ++i) {
+        if (m_preassignments[i] == 1) { // Local
+            preassigned.append(static_cast<quint16>(i));
+        }
+    }
+    m_pTcpSession->setPreassignedChannels(preassigned);
     if (!m_pTcpSession->listen()) {
         kLogger.warning() << "hostSession: listen failed on port" << port;
         deleteSubComponents();
@@ -139,8 +162,18 @@ void NetmixSessionManager::joinSession(const QHostAddress& address, quint16 port
     }
 
     m_pTcpSession = new TcpSession(this);
-    m_pTcpSession->setDisplayName(QStringLiteral("netmix-client"));
+    m_pTcpSession->setDisplayName(
+            m_displayName.isEmpty() ? QStringLiteral("netmix-client") : m_displayName);
     m_pTcpSession->setPeerAddress(address, port);
+
+    // Build preassigned channel list from m_preassignments
+    QVector<quint16> preassigned;
+    for (int i = 0; i < m_preassignments.size(); ++i) {
+        if (m_preassignments[i] == 1) { // Local
+            preassigned.append(static_cast<quint16>(i));
+        }
+    }
+    m_pTcpSession->setPreassignedChannels(preassigned);
 
     m_pUdpChannel = new UdpChannel(this);
     if (!m_pUdpChannel->bind(0)) {

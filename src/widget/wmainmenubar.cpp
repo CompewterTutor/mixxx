@@ -513,6 +513,15 @@ void WMainMenuBar::initialize() {
     pOptionsMenu->addAction(pOptionsBroadcasting);
 #endif
 
+    QString netmixTitle = tr("&Netmix Connect...");
+    QString netmixText = tr("Open the Netmix network mixing connection dialog");
+    auto* pOptionsNetmix = new QAction(netmixTitle, this);
+    pOptionsNetmix->setStatusTip(netmixText);
+    pOptionsNetmix->setWhatsThis(buildWhatsThis(netmixTitle, netmixText));
+    connect(pOptionsNetmix, &QAction::triggered,
+            this, &WMainMenuBar::showNetmixConnect);
+    pOptionsMenu->addAction(pOptionsNetmix);
+
     pOptionsMenu->addSeparator();
 
     QString keyboardShortcutTitle = tr("Enable &Keyboard Shortcuts");

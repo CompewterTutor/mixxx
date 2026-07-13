@@ -27,6 +27,7 @@
 #include "coreservices.h"
 #include "defs_urls.h"
 #include "dialog/dlgabout.h"
+#include "dialog/dlgnetmixconnect.h"
 #include "dialog/dlgdevelopertools.h"
 #include "dialog/dlgkeywheel.h"
 #include "moc_mixxxmainwindow.cpp"
@@ -893,6 +894,13 @@ void MixxxMainWindow::connectMenuBar() {
             &MixxxMainWindow::slotHelpAbout,
             Qt::UniqueConnection);
 
+    // Netmix
+    connect(m_pMenuBar,
+            &WMainMenuBar::showNetmixConnect,
+            this,
+            &MixxxMainWindow::slotNetmixConnect,
+            Qt::UniqueConnection);
+
     // Developer
     connect(m_pMenuBar,
             &WMainMenuBar::reloadSkin,
@@ -1245,6 +1253,17 @@ void MixxxMainWindow::slotNoAuxiliaryInputConfigured() {
 void MixxxMainWindow::slotHelpAbout() {
     DlgAbout* about = new DlgAbout;
     about->show();
+}
+
+void MixxxMainWindow::slotNetmixConnect() {
+    if (!m_pNetmixConnectDlg) {
+        m_pNetmixConnectDlg = make_parented<DlgNetmixConnect>(
+                m_pCoreServices->getNetmixSessionManager().get(),
+                this);
+    }
+    m_pNetmixConnectDlg->show();
+    m_pNetmixConnectDlg->raise();
+    m_pNetmixConnectDlg->activateWindow();
 }
 
 void MixxxMainWindow::slotLibraryScanSummaryDlg(const LibraryScanResultSummary& result) {

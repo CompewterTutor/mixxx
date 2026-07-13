@@ -312,6 +312,17 @@
 | Receiver ready semantics | On receiver, `m_remoteReady[ch]` set to true when track received (sender implicitly has the track). Receiver-side gating becomes ready once track is loaded locally. |
 | Teardown | `leaveSession` / `deleteSubComponents` resets all ready COs to 0.0, unmutes all channels (mute=0.0), clears incoming map. Ready COs NOT deleted between sessions (reused). |
 
+## 2026-07-12: DlgNetmixConnect Dialog + Menu Entry (Task 1.7.1)
+
+| Decision | Value |
+|---|---|
+| Dialog type | Modeless persistent `parented_ptr` dialog, reused across connect/disconnect. Hidden when closed, shown/raised/activated on reopen. |
+| Pre-assignment encoding | `QVector<quint16>(5, 0)` per manager. Values: 0=Open, 1=Local, 2=Remote. Only channels with value 1 are included in TcpSession's preassignedChannels. |
+| Display name flow | Dialog reads `editDisplayName` → `setDisplayName()` on manager → manager passes to `TcpSession::setDisplayName()` in `hostSession`/`joinSession`. Defaults to "netmix-host"/"netmix-client" if empty. |
+| RTT signal | `NetmixSessionManager::rttUpdated(double)` signal added for dialog binding. Not yet wired to ClockSync (deferred). Dialog shows "-- ms" until ClockSync integration. |
+| Dialog enabled state | All input fields disabled during session (Connected/Degraded). Re-enabled on Idle. Connect button enabled only in Idle. Disconnect button enabled only in Connected/Degraded. |
+| Default port | 21200 (matching TcpSession default). Validated to range 1024-65535. |
+
 ## 2026-07-12: Phase Merge 1.6 (Task 1.6.6)
 
 | Decision | Value |

@@ -74,6 +74,7 @@ class WMainMenuBar : public QMenuBar {
     void showAutoDJ();
     void menubarAutoHideChanged(bool autohide);
     void showAbout();
+    void showNetmixConnect();
     void showKeywheel(bool visible);
     void showPreferences();
     void toggleDeveloperTools(bool toggle);
