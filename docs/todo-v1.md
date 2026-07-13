@@ -289,7 +289,7 @@ Ground rules for every task (also in `skills/ralph.md`):
 
 ## Phase 1.7 — UI: Connect Dialog, Preferences, Indicators
 
-- [ ] `1.7.1` DlgNetmixConnect dialog + main menu entry
+- [x] `1.7.1` DlgNetmixConnect dialog + main menu entry
   - **Goal:** `src/dialog/dlgnetmixconnect.h/.cpp/.ui` (pattern: `DlgAbout`, `src/dialog/dlgabout.cpp:13`): host-or-join choice, peer IP/port fields, display name, per-deck ownership pre-assignment combo (Local/Remote/Open), connect/disconnect button, live status + RTT label bound to NetmixSessionManager signals. Menu: `WMainMenuBar` signal `showNetmixConnect` (pattern `src/widget/wmainmenubar.cpp` showAbout) wired in `MixxxMainWindow` (`src/mixxxmainwindow.cpp:889` area).
   - **Touches:** `src/dialog/dlgnetmixconnect.h/.cpp/.ui`, `src/widget/wmainmenubar.h/.cpp`, `src/mixxxmainwindow.h/.cpp`, `CMakeLists.txt`
   - **Success:** Dialog opens from menu, drives host/join/leave on the manager, reflects state changes live.
@@ -297,7 +297,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.7.2` Preferences page DlgPrefNetmix
+- [x] `1.7.2` Preferences page DlgPrefNetmix
   - **Goal:** `src/preferences/dialog/dlgprefnetmix.h/.cpp/.ui` registered in `DlgPreferences` constructor (`src/preferences/dialog/dlgpreferences.cpp:107` area): listen port, default display name, rollback window (ticks), quantize-to-64ths default toggle, cache directory display + size + clear button. Persists via UserSettings.
   - **Touches:** `src/preferences/dialog/dlgprefnetmix.h/.cpp/.ui`, `src/preferences/dialog/dlgpreferences.cpp`, `CMakeLists.txt`
   - **Success:** Settings round-trip through apply/cancel/reset-to-defaults; values consumed by NetmixSessionManager at next session start.
@@ -305,7 +305,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.7.3` Session status ControlObjects for skins/controllers
+- [x] `1.7.3` Session status ControlObjects for skins/controllers
   - **Goal:** Expose per-session COs under `[Netmix]`: status, rtt_ms, rollback_count, peer_connected; per-channel: `netmix_owner` (0 local/1 remote/2 open), `netmix_ready`. Documented in a short section appended to `docs/plan.md`. Skins/controllers can bind without new widget work.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/netmix/channelownership.cpp`, `docs/plan.md`, `src/test/netmixsession_test.cpp`
   - **Success:** COs exist, update on state changes, readable via ControlProxy in tests.

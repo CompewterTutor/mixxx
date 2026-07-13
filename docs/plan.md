@@ -119,6 +119,19 @@ owned by `CoreServices` (created alongside `BroadcastManager`,
   primitives (`ControlValueAtomic`, FIFO); protocol structs versioned from
   day one.
 
+## Session Status ControlObjects
+
+Exposed for skins/controller bindings. All read-only.
+
+| ConfigKey | Range | Description |
+|---|---|---|
+| `[Netmix], status` | 0-3 | SessionState: 0=Idle, 1=Connecting, 2=Connected, 3=Degraded |
+| `[Netmix], rtt_ms` | double | Round-trip time (ms) from ClockSync (0.0 when unavailable) |
+| `[Netmix], rollback_count` | double | Total rollbacks since session start (incremented per rollback event) |
+| `[Netmix], peer_connected` | 0/1 | 1 when TCP session is Connected |
+| `[Channel0-4], netmix_owner` | 0/1/2 | 0=local owner, 1=remote owner, 2=open |
+| `[Channel1-4], netmix_ready` | 0/1 | 1 when both peers have track cached (Phase 1.6.3) |
+
 ## Ralph workflow
 
 `scripts/ralph.sh` — same loop as figby/Zoid/Zoidmatter, adapted:

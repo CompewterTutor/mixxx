@@ -11,6 +11,7 @@
 
 class ControlObject;
 class DlgDeveloperTools;
+class DlgNetmixConnect;
 class DlgPreferences;
 class DlgKeywheel;
 class GuiTick;
@@ -64,6 +65,8 @@ class MixxxMainWindow : public QMainWindow {
     void slotOptionsPreferences();
     /// show the about dialog
     void slotHelpAbout();
+    /// show the netmix connect dialog
+    void slotNetmixConnect();
     /// show popup with library scan results
     void slotLibraryScanSummaryDlg(const LibraryScanResultSummary& result);
     /// show keywheel
@@ -151,6 +154,7 @@ class MixxxMainWindow : public QMainWindow {
 
     DlgPreferences* m_pPrefDlg;
     parented_ptr<DlgKeywheel> m_pKeywheel;
+    parented_ptr<DlgNetmixConnect> m_pNetmixConnectDlg;
 
 #ifdef __ENGINEPRIME__
     // Library exporter

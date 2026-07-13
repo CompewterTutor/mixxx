@@ -1,5 +1,18 @@
 # Netmix — Cross-Cutting Decisions
 
+## 2026-07-12: DlgPrefNetmix Preferences Page (Task 1.7.2)
+
+| Decision | Value |
+|---|---|
+| Config group | `[Netmix]` — keys: `Port` (int), `DisplayName` (string), `RollbackWindow` (int), `QuantizeEnabled` (bool) |
+| Default port | 21200 (matches TcpSession default) |
+| Default rollback window | 8 ticks (matches RollbackEngine default) |
+| Default quantize | Off |
+| Cache dir | `<settingsPath>/netmix_cache/` — computed from `ConfigObject::getSettingsPath()` |
+| Cache clear | `QDir::removeRecursively()` + `mkpath` to re-create empty dir |
+| Icon | `ic_preferences_netmix.svg` — three-node network glyph in light (white) and dark (#0f0f0f) themes |
+| UI registration | Alphabetically between Modplug and Record blocks in `DlgPreferences` constructor. No `#ifdef` guard — always compiled, like `DlgPrefRecord`/`DlgPrefDeck` (unlike `DlgPrefBroadcast` which is `__BROADCAST__`-gated). |
+
 ## 2026-07-12: SessionClock Tick Math (Task 1.1.3)
 
 | Decision | Value |
@@ -312,6 +325,17 @@
 | Receiver ready semantics | On receiver, `m_remoteReady[ch]` set to true when track received (sender implicitly has the track). Receiver-side gating becomes ready once track is loaded locally. |
 | Teardown | `leaveSession` / `deleteSubComponents` resets all ready COs to 0.0, unmutes all channels (mute=0.0), clears incoming map. Ready COs NOT deleted between sessions (reused). |
 
+## 2026-07-12: DlgNetmixConnect Dialog + Menu Entry (Task 1.7.1)
+
+| Decision | Value |
+|---|---|
+| Dialog type | Modeless persistent `parented_ptr` dialog, reused across connect/disconnect. Hidden when closed, shown/raised/activated on reopen. |
+| Pre-assignment encoding | `QVector<quint16>(5, 0)` per manager. Values: 0=Open, 1=Local, 2=Remote. Only channels with value 1 are included in TcpSession's preassignedChannels. |
+| Display name flow | Dialog reads `editDisplayName` → `setDisplayName()` on manager → manager passes to `TcpSession::setDisplayName()` in `hostSession`/`joinSession`. Defaults to "netmix-host"/"netmix-client" if empty. |
+| RTT signal | `NetmixSessionManager::rttUpdated(double)` signal added for dialog binding. Not yet wired to ClockSync (deferred). Dialog shows "-- ms" until ClockSync integration. |
+| Dialog enabled state | All input fields disabled during session (Connected/Degraded). Re-enabled on Idle. Connect button enabled only in Idle. Disconnect button enabled only in Connected/Degraded. |
+| Default port | 21200 (matching TcpSession default). Validated to range 1024-65535. |
+
 ## 2026-07-12: Phase Merge 1.6 (Task 1.6.6)
 
 | Decision | Value |
@@ -325,3 +349,15 @@
 | Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.7. |
 | Bug fix during pre-merge | `notifyTrackLoaded` segfaulted when `m_pPlayerManager` was null (test path). Added null guard before `m_pPlayerManager->getPlayer()`. |
 | Phase 1.7 next | Begin on `task-1.7.1` off `release/1.7` (created from trunk after this merge) |
+| Deferred: ClockSync port-sharing | Still unresolved (same as prior phases). `ClockSync::start` fails on macOS (`SO_REUSEPORT` not exposed by Qt). Creation remains commented out in `NetmixSessionManager::onTcpConnected`. Re-deferred to phase 1.7. |
+
+## 2026-07-12: Session Status COs (Task 1.7.3)
+
+| Decision | Value |
+|---|---|
+| netmix_owner encoding | `ownershipToDisplayValue()`: OwnedLocal→0, OwnedRemote→1, Unowned/PendingClaim→2. Internal `OwnershipState` enum differs from CO display value — skins read 0/1/2, not raw enum. |
+| Session status COs | Created in ctor with `setReadOnly()` + `forceSet(initial)`. Deleted in dtor (same pattern as `m_pStatusCO`). Three session-level (`[Netmix], rtt_ms/rollback_count/peer_connected`) and five per-channel (`[Channel0-4], netmix_owner`). |
+| rtt_ms update | `rttUpdated` signal wired to `m_pRttMsCO->forceSet()` in ctor. ClockSync emission deferred — CO reads 0.0 until ClockSync integration. |
+| rollback_count update | No increment source yet (RollbackEngine not wired). CO reads 0.0. Increment deferred to RollbackEngine integration. |
+| peer_connected update | Set to 1.0 in `onTcpStateChanged(Connected)`, 0.0 in `onTcpStateChanged(Disconnected)`. Also reset to 0.0 in `deleteSubComponents()`. |
+| netmix_owner update | `ownershipChanged` signal connected to `onOwnershipChanged` slot in `onTcpConnected()`. Reset to 2.0 in `deleteSubComponents()`. |

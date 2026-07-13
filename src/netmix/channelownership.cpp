@@ -231,6 +231,19 @@ const ChannelOwnership::ChannelEntry& ChannelOwnership::entryFor(quint16 channel
     return m_channels[channelId];
 }
 
+/* static */ quint8 ChannelOwnership::ownershipToDisplayValue(OwnershipState state) {
+    switch (state) {
+    case OwnershipState::OwnedLocal:
+        return 0;
+    case OwnershipState::OwnedRemote:
+        return 1;
+    case OwnershipState::Unowned:
+    case OwnershipState::PendingClaim:
+        return 2;
+    }
+    return 2;
+}
+
 void ChannelOwnership::setState(quint16 channelId, OwnershipState newState, quint8 peerId) {
     if (channelId >= static_cast<quint16>(m_channels.size())) {
         return;
