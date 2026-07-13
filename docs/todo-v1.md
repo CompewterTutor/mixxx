@@ -305,7 +305,7 @@ Ground rules for every task (also in `skills/ralph.md`):
   - **Difficulty:** Medium
   - **Model:** Standard
 
-- [ ] `1.7.3` Session status ControlObjects for skins/controllers
+- [x] `1.7.3` Session status ControlObjects for skins/controllers
   - **Goal:** Expose per-session COs under `[Netmix]`: status, rtt_ms, rollback_count, peer_connected; per-channel: `netmix_owner` (0 local/1 remote/2 open), `netmix_ready`. Documented in a short section appended to `docs/plan.md`. Skins/controllers can bind without new widget work.
   - **Touches:** `src/netmix/netmixsessionmanager.h/.cpp`, `src/netmix/channelownership.cpp`, `docs/plan.md`, `src/test/netmixsession_test.cpp`
   - **Success:** COs exist, update on state changes, readable via ControlProxy in tests.

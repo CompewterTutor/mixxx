@@ -744,4 +744,74 @@ TEST_F(NetmixSessionTest, Gating_RemoteDeckCachedTrack) {
     pumpEvents(500);
 }
 
+// ---------------------------------------------------------------------------
+// 1.7.3: Session Status ControlObjects
+// ---------------------------------------------------------------------------
+
+TEST_F(NetmixSessionTest, StatusCOs_InitialValues) {
+    NetmixSessionManager mgr;
+
+    ControlProxy statusCO(ConfigKey("[Netmix]", "status"));
+    ControlProxy rttMsCO(ConfigKey("[Netmix]", "rtt_ms"));
+    ControlProxy rollbackCountCO(ConfigKey("[Netmix]", "rollback_count"));
+    ControlProxy peerConnectedCO(ConfigKey("[Netmix]", "peer_connected"));
+
+    EXPECT_DOUBLE_EQ(0.0, statusCO.get());
+    EXPECT_DOUBLE_EQ(0.0, rttMsCO.get());
+    EXPECT_DOUBLE_EQ(0.0, rollbackCountCO.get());
+    EXPECT_DOUBLE_EQ(0.0, peerConnectedCO.get());
+
+    for (int ch = 0; ch < 5; ++ch) {
+        QString group = QStringLiteral("[Channel%1]").arg(ch);
+        ControlProxy ownerCO(ConfigKey(group, "netmix_owner"));
+        EXPECT_DOUBLE_EQ(2.0, ownerCO.get()) << "channel " << ch << " should be open";
+    }
+}
+
+TEST_F(NetmixSessionTest, StatusCOs_PeerConnectedOnSession) {
+    std::unique_ptr<NetmixSessionManager> mgrA, mgrB;
+    quint16 portA = 0;
+
+    ASSERT_TRUE(setupLoopbackPair(mgrA, mgrB, portA));
+
+    ControlProxy peerConnected(ConfigKey("[Netmix]", "peer_connected"));
+    EXPECT_DOUBLE_EQ(1.0, peerConnected.get());
+
+    mgrA->leaveSession();
+    pumpEvents(500);
+    EXPECT_DOUBLE_EQ(0.0, peerConnected.get());
+
+    mgrB->leaveSession();
+    pumpEvents(500);
+    EXPECT_DOUBLE_EQ(0.0, peerConnected.get());
+}
+
+TEST_F(NetmixSessionTest, StatusCOs_OwnershipUpdatesNetmixOwner) {
+    std::unique_ptr<NetmixSessionManager> mgrA, mgrB;
+    quint16 portA = 0;
+
+    ASSERT_TRUE(setupLoopbackPair(mgrA, mgrB, portA));
+
+    // Both proxies read the same global CO in single-process tests
+    ControlProxy owner(ConfigKey("[Channel1]", "netmix_owner"));
+    EXPECT_DOUBLE_EQ(2.0, owner.get());
+
+    auto* ownershipA = mgrA->channelOwnership();
+    ASSERT_NE(nullptr, ownershipA);
+
+    ownershipA->claim(1);
+    pumpEvents(1000);
+
+    // After claim→grant round-trip the last write is mgrA's OwnedLocal (0.0)
+    EXPECT_DOUBLE_EQ(0.0, owner.get());
+
+    ownershipA->release(1);
+    pumpEvents(1000);
+
+    // After release both sides converge to Unowned (2.0)
+    EXPECT_DOUBLE_EQ(2.0, owner.get());
+
+    teardownPair(mgrA, mgrB);
+}
+
 } // namespace

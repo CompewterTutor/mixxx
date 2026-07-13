@@ -48,6 +48,35 @@ NetmixSessionManager::NetmixSessionManager(QObject* parent)
         QString group = QStringLiteral("[Channel%1]").arg(i + 1);
         m_pMuteProxies[i] = new ControlProxy(ConfigKey(group, "mute"), this);
     }
+
+    // Session status COs
+    m_pRttMsCO = new ControlObject(ConfigKey("[Netmix]", "rtt_ms"));
+    m_pRttMsCO->setReadOnly();
+    m_pRttMsCO->forceSet(0.0);
+
+    m_pRollbackCountCO = new ControlObject(ConfigKey("[Netmix]", "rollback_count"));
+    m_pRollbackCountCO->setReadOnly();
+    m_pRollbackCountCO->forceSet(0.0);
+
+    m_pPeerConnectedCO = new ControlObject(ConfigKey("[Netmix]", "peer_connected"));
+    m_pPeerConnectedCO->setReadOnly();
+    m_pPeerConnectedCO->forceSet(0.0);
+
+    // Per-channel owner COs (channelId 0..4 → [Channel0..4])
+    m_pDeckOwnerCOs.resize(5);
+    for (int i = 0; i < 5; ++i) {
+        QString group = QStringLiteral("[Channel%1]").arg(i);
+        auto* co = new ControlObject(ConfigKey(group, "netmix_owner"));
+        co->setReadOnly();
+        co->forceSet(2.0);
+        m_pDeckOwnerCOs[i] = co;
+    }
+
+    // Wire rttUpdated signal → CO update (ClockSync will emit when available)
+    connect(this, &NetmixSessionManager::rttUpdated,
+            this, [this](double rttMs) {
+                m_pRttMsCO->forceSet(rttMs);
+            });
 }
 
 NetmixSessionManager::~NetmixSessionManager() {
@@ -58,6 +87,11 @@ NetmixSessionManager::~NetmixSessionManager() {
     m_pDeckReadyCOs.clear();
     // Proxies are parented to this — no manual deletion needed
     m_pDeckReadyProxies.clear();
+    delete m_pRttMsCO;
+    delete m_pRollbackCountCO;
+    delete m_pPeerConnectedCO;
+    qDeleteAll(m_pDeckOwnerCOs);
+    m_pDeckOwnerCOs.clear();
 }
 
 void NetmixSessionManager::setState(SessionState state) {
@@ -224,12 +258,14 @@ void NetmixSessionManager::onTcpStateChanged(TcpSession::State ts) {
     case TcpSession::Handshaking:
         break;
     case TcpSession::Connected:
+        m_pPeerConnectedCO->forceSet(1.0);
         onTcpConnected();
         break;
     case TcpSession::Degraded:
         setState(Degraded);
         break;
     case TcpSession::Disconnected:
+        m_pPeerConnectedCO->forceSet(0.0);
         onTcpDisconnected();
         break;
     }
@@ -292,8 +328,10 @@ void NetmixSessionManager::onTcpConnected() {
     connect(m_pUdpChannel, &UdpChannel::inputFrameReceived,
             this, &NetmixSessionManager::onInputFrameReceived);
 
-    // Wire ownership signals -> TCP sends
+    // Wire ownership signals -> TCP sends + CO updates
     if (m_pChannelOwnership) {
+        connect(m_pChannelOwnership, &ChannelOwnership::ownershipChanged,
+                this, &NetmixSessionManager::onOwnershipChanged);
         connect(m_pChannelOwnership, &ChannelOwnership::claimRequested,
                 this, [this](quint16 channelId) {
                     NetmixOwnershipClaim payload;
@@ -598,6 +636,14 @@ void NetmixSessionManager::onTcpDisconnected() {
     setState(Idle);
 }
 
+void NetmixSessionManager::onOwnershipChanged(quint16 channelId, OwnershipState state) {
+    if (channelId >= static_cast<quint16>(m_pDeckOwnerCOs.size())) {
+        return;
+    }
+    quint8 val = ChannelOwnership::ownershipToDisplayValue(state);
+    m_pDeckOwnerCOs[channelId]->forceSet(static_cast<double>(val));
+}
+
 void NetmixSessionManager::applyPreAssignment() {
     if (!m_pChannelOwnership || !m_pTcpSession) {
         return;
@@ -752,6 +798,12 @@ void NetmixSessionManager::deleteSubComponents() {
             m_pMuteProxies[i]->set(0.0);
         }
     }
+
+    // Reset owner COs to open (2.0)
+    for (int i = 0; i < m_pDeckOwnerCOs.size(); ++i) {
+        m_pDeckOwnerCOs[i]->forceSet(2.0);
+    }
+    m_pPeerConnectedCO->forceSet(0.0);
 
     // Clear ready-state tracking
     m_localTrackLoaded.clear();
