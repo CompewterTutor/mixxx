@@ -18,6 +18,21 @@ To get started with Mixxx:
 2. For experimentation and testing, [download a development release][download-testing].
 3. To live on the bleeding edge, clone the repo: `git clone https://github.com/mixxxdj/mixxx.git`
 
+## Rollback Network Mixing (this fork)
+
+This fork (branch `feat/rollback-network-mixing`) adds an experimental
+featureset, nicknamed **Netmix**, that lets two DJs on separate machines mix
+a shared set of decks back-to-back over the network with minimal perceived
+latency. No audio is streamed — each side plays locally from a synced track
+cache, and only control input (knobs, faders, transport, a synced session
+clock) crosses the wire, using fighting-game-style **GGPO rollback netcode**
+to hide network jitter: local playback never waits on the remote peer, late
+input is predicted, and corrections are reconciled with smooth interpolation
+instead of snapping.
+
+See [`docs/RBNMix-Manual.md`](docs/RBNMix-Manual.md) for the full feature
+overview, setup guide, and reference for every option.
+
 ## Bug tracker
 
 The Mixxx team uses [Github Issues][issues] to manage Mixxx development.
