@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <QCoreApplication>
+#include <QElapsedTimer>
 #include <memory>
 
 #include "control/controlobject.h"
@@ -13,6 +15,17 @@ namespace {
 
 class NetmixCaptureTest : public MixxxTest {
   protected:
+    // Capture is asynchronous: callbacks write into a lock-free FIFO that a
+    // GUI-thread QTimer drains every kDrainIntervalMs. Pump the event loop
+    // long enough for the drain timer to fire and deliver everything.
+    static void drainCapture() {
+        QElapsedTimer timer;
+        timer.start();
+        while (timer.elapsed() < 100) {
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+        }
+    }
+
     void SetUp() override {
         // Create a real CO for an allowlisted key
         m_pAllowlistedCO = new ControlObject(
@@ -75,6 +88,8 @@ TEST_F(NetmixCaptureTest, ExternalSetEmitsCaptured) {
             ConfigKey(QStringLiteral("Channel1"), QStringLiteral("volume")));
     externalProxy.set(0.75);
 
+    drainCapture();
+
     EXPECT_EQ(1, capturedCount);
     EXPECT_EQ(2u, capturedTick) << "clock advanced by 1 tick = agreedTick 2";
     EXPECT_EQ(25u, capturedWireId) << "[Channel1],volume wireId";
@@ -100,9 +115,9 @@ TEST_F(NetmixCaptureTest, OwnProxySetDoesNotEmit) {
 
     m_pCapture->proxies()[idx]->set(0.8);
 
-    // Wait — the value change might be async if Qt::QueuedConnection.
-    // But we used DirectConnection in capture, so the set() completes
-    // synchronously.
+    // The capture's own proxies are echo-suppressed at capture time, so
+    // nothing enters the FIFO and nothing is delivered even after draining.
+    drainCapture();
     EXPECT_EQ(0, capturedCount);
 
     QObject::disconnect(conn);
@@ -122,6 +137,8 @@ TEST_F(NetmixCaptureTest, NonAllowlistedSetDoesNotEmit) {
     ControlProxy externalProxy(
             ConfigKey(QStringLiteral("Test"), QStringLiteral("not_listed")));
     externalProxy.set(1.0);
+
+    drainCapture();
 
     EXPECT_EQ(0, capturedCount);
 
@@ -158,11 +175,15 @@ TEST_F(NetmixCaptureTest, RestartWorks) {
     QMetaObject::Connection conn = QObject::connect(
             m_pCapture.get(),
             &ControlCapture::captured,
-            [&](quint32, quint16, double) { ++capturedCount; });
+            [&](quint32 tick, quint16 wireId, double value) {
+                ++capturedCount;
+            });
 
     ControlProxy externalProxy(
             ConfigKey(QStringLiteral("Channel1"), QStringLiteral("volume")));
     externalProxy.set(0.6);
+
+    drainCapture();
 
     EXPECT_EQ(1, capturedCount);
 
